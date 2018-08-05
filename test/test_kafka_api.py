@@ -7,9 +7,10 @@ from confluent_kafka.avro import AvroProducer, AvroConsumer, loads
 
 from pyconnect.avroparser import create_schema_from_record
 
+# Utilities and static definitions
+
 TIMEOUT = 1.0
 make_rand_text = lambda x: "".join(choice(ascii_letters) for _ in range(x))
-
 _BASE_CONF = {"bootstrap.servers": "localhost"}
 
 
@@ -55,6 +56,8 @@ def producer_callback(err, _msg):
         print('Failed to produce: {}'.format(err))
 
 
+# Producers and consumers
+
 def produce_json(filename, topic):
     producer = Producer(get_producer_conf())
     sample_rows = read_sample_data(filename)
@@ -75,7 +78,7 @@ def produce_avro(filename, topic):
     )
 
     for row in sample_rows:
-        producer.produce(topic=topic, value=row.encode("utf-8"), callback=producer_callback)
+        producer.produce(topic=topic, value=json.loads(row), callback=producer_callback)
     producer.flush()
 
 
@@ -97,10 +100,32 @@ def consume_json(topic, consumer):
     return data
 
 
+def consume_avro(topic, consumer):
+    consumer.subscribe([topic])
+    data = []
+    while True:
+        msg = consumer.poll(TIMEOUT)
+        if msg is None:
+            continue
+        if msg.error():
+            if msg.error().code() == KafkaError._PARTITION_EOF:
+                break
+            else:
+                print("FATAL::", msg.error())
+                break
+        data.append(json.dumps(msg.value()) + "\n")  # newline so the comparison with the string is correct
+        # TODO FIXME have to remove the newlines, also from the normal producer
+    consumer.close()
+    return data
+
+
 def compare_data_with_file(data, filename):
     orig_data = read_sample_data(filename)
     for d, o in zip(data, orig_data):
         assert d == o, f"Consumed data [{d}] is not the same as original sample data [{o}]!"
+
+
+# Tests
 
 
 def test_cluster_json():
@@ -117,5 +142,5 @@ def test_cluster_avro():
     consumer = AvroConsumer(get_avro_consumer_conf())
     create_sample_data(test_name, sample_size=50)
     produce_avro(test_name, test_name)
-    sample_data = consume_json(test_name, consumer)
+    sample_data = consume_avro(test_name, consumer)
     compare_data_with_file(sample_data, test_name)

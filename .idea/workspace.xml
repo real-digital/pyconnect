@@ -2,8 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e1e56cb8-0fee-44af-8210-88d50519e61e" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/pyconnect/avroparser.py" beforeDir="false" afterPath="$PROJECT_DIR$/pyconnect/avroparser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_avroparser.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_avroparser.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/test_kafka_api.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_kafka_api.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -14,9 +12,9 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/pyconnect$scratch.coverage" NAME="scratch Coverage Results" MODIFIED="1533404299517" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />
-    <SUITE FILE_PATH="coverage/pyconnect$Pytest_API.coverage" NAME="Pytest API Coverage Results" MODIFIED="1533457054085" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/pyconnect$Pytest_API.coverage" NAME="Pytest API Coverage Results" MODIFIED="1533466887955" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/pyconnect$Pytest_Avroparser.coverage" NAME="Pytest Avroparser Coverage Results" MODIFIED="1533456860875" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/pyconnect$Pytest_Full.coverage" NAME="Pytest Full Coverage Results" MODIFIED="1533405612854" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/pyconnect$Pytest_Full.coverage" NAME="Pytest Full Coverage Results" MODIFIED="1533466951444" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/pyconnect$avrrr.coverage" NAME="avrrr Coverage Results" MODIFIED="1533405606475" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
   </component>
   <component name="FUSProjectUsageTrigger">
@@ -61,7 +59,7 @@
           <entry key="gitignore" value="39" />
           <entry key="json" value="33" />
           <entry key="md" value="342" />
-          <entry key="py" value="4847" />
+          <entry key="py" value="5274" />
           <entry key="txt" value="8" />
           <entry key="yml" value="42" />
         </counts>
@@ -71,7 +69,7 @@
           <entry key="Makefile" value="264" />
           <entry key="Markdown" value="342" />
           <entry key="PLAIN_TEXT" value="72" />
-          <entry key="Python" value="4823" />
+          <entry key="Python" value="5250" />
           <entry key="Scratch" value="59" />
           <entry key="YAML" value="42" />
         </counts>
@@ -85,10 +83,11 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/test/test_kafka_api.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="632">
-                  <caret line="83" column="13" lean-forward="true" selection-start-line="83" selection-start-column="13" selection-end-line="83" selection-end-column="13" />
+                <state relative-caret-position="422">
+                  <caret line="124" column="50" lean-forward="true" selection-start-line="124" selection-start-column="50" selection-end-line="124" selection-end-column="50" />
                   <folding>
                     <element signature="e#0#32#0" expanded="true" />
+                    <marker date="1533466969082" expanded="true" signature="3869:3871" ph="..." />
                   </folding>
                 </state>
               </provider>
@@ -128,7 +127,7 @@
       </split-first>
       <split-second>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file pinned="false" current-in-tab="true">
+          <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/test/test_avroparser.py">
               <provider selected="true" editor-type-id="text-editor">
                 <state relative-caret-position="695">
@@ -140,11 +139,11 @@
               </provider>
             </entry>
           </file>
-          <file pinned="false" current-in-tab="false">
+          <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/serializer/message_serializer.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="136">
-                  <caret line="70" column="8" selection-start-line="70" selection-start-column="8" selection-end-line="70" selection-end-column="8" />
+                <state relative-caret-position="451">
+                  <caret line="91" selection-start-line="91" selection-end-line="91" />
                 </state>
               </provider>
             </entry>
@@ -200,8 +199,8 @@
         <option value="$APPLICATION_CONFIG_DIR$/scratches/buffer1.txt" />
         <option value="$APPLICATION_CONFIG_DIR$/scratches/scratch.json" />
         <option value="$PROJECT_DIR$/pyconnect/avroparser.py" />
-        <option value="$PROJECT_DIR$/test/test_kafka_api.py" />
         <option value="$PROJECT_DIR$/test/test_avroparser.py" />
+        <option value="$PROJECT_DIR$/test/test_kafka_api.py" />
       </list>
     </option>
   </component>
@@ -269,7 +268,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.Pytest API">
+  <component name="RunManager" selected="Python tests.Pytest Full">
     <configuration name="avrrr" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="pyconnect" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -390,35 +389,35 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 10m 57s.xml">
-      <configuration name="Pytest Avroparser" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 11m 16s.xml">
-      <configuration name="Pytest Avroparser" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 11m 57s.xml">
-      <configuration name="Pytest Avroparser" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 13m 33s.xml">
-      <configuration name="Pytest Avroparser" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 14m 01s.xml">
-      <configuration name="Pytest Avroparser" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 14m 21s.xml">
-      <configuration name="Pytest Avroparser" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_API - 2018.08.05 at 10h 15m 06s.xml">
+    <history-entry file="Pytest_API - 2018.08.05 at 12h 53m 49s.xml">
       <configuration name="Pytest API" configurationId="tests" />
     </history-entry>
-    <history-entry file="Pytest_API - 2018.08.05 at 10h 15m 43s.xml">
+    <history-entry file="Pytest_API - 2018.08.05 at 12h 54m 13s.xml">
       <configuration name="Pytest API" configurationId="tests" />
     </history-entry>
-    <history-entry file="Pytest_API - 2018.08.05 at 10h 16m 26s.xml">
+    <history-entry file="Pytest_API - 2018.08.05 at 12h 55m 05s.xml">
       <configuration name="Pytest API" configurationId="tests" />
     </history-entry>
-    <history-entry file="Pytest_API - 2018.08.05 at 10h 17m 30s.xml">
+    <history-entry file="Pytest_API - 2018.08.05 at 12h 56m 00s.xml">
       <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 12h 57m 11s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 12h 57m 30s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 12h 57m 53s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 13h 01m 27s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 13h 01m 32s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_Full - 2018.08.05 at 13h 02m 37s.xml">
+      <configuration name="Pytest Full" configurationId="tests" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
@@ -430,8 +429,8 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.30428016" />
-      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.32529184" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.30428016" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.32529184" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -463,11 +462,6 @@
           <url>file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/avro/schema.py</url>
           <line>1160</line>
           <option name="timeStamp" value="10" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/serializer/message_serializer.py</url>
-          <line>91</line>
-          <option name="timeStamp" value="15" />
         </line-breakpoint>
       </breakpoints>
       <breakpoints-dialog>
@@ -692,16 +686,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test/test_kafka_api.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="632">
-          <caret line="83" column="13" lean-forward="true" selection-start-line="83" selection-start-column="13" selection-end-line="83" selection-end-column="13" />
-          <folding>
-            <element signature="e#0#32#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="270">
@@ -712,19 +696,30 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/serializer/message_serializer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="136">
-          <caret line="70" column="8" selection-start-line="70" selection-start-column="8" selection-end-line="70" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/test/test_avroparser.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="695">
           <caret line="73" lean-forward="true" selection-start-line="73" selection-end-line="73" />
           <folding>
             <element signature="e#0#58#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/serializer/message_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="451">
+          <caret line="91" selection-start-line="91" selection-end-line="91" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test/test_kafka_api.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="422">
+          <caret line="124" column="50" lean-forward="true" selection-start-line="124" selection-start-column="50" selection-end-line="124" selection-end-column="50" />
+          <folding>
+            <element signature="e#0#32#0" expanded="true" />
+            <marker date="1533466969082" expanded="true" signature="3869:3871" ph="..." />
           </folding>
         </state>
       </provider>
