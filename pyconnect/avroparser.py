@@ -1,4 +1,6 @@
-from avro.schema import Parse
+from typing import Any, Dict
+
+RecordDict = Dict[str, Any]
 
 SIMPLE_TYPE_MAP = {
     int: "long",
@@ -10,18 +12,20 @@ SIMPLE_TYPE_MAP = {
 }
 
 
-def _parse_avro_field(name, element, optional_primitives):
-
+def _parse_avro_field(name: str, element: Any, optional_primitives: bool) -> RecordDict:
     elem_type = type(element)
+    primitive_avro_type = SIMPLE_TYPE_MAP.get(elem_type, None)
 
     # simple types
-    avro_type = SIMPLE_TYPE_MAP.get(elem_type, None)
-    if avro_type is not None:
-        if optional_primitives is True and avro_type is not "null":
-            avro_type = ["null", avro_type]
+    if primitive_avro_type is not None:
+
+        # Need to substitute "<type>" for ["null", "<type>"] when optional primitives are requested
+        if optional_primitives is True and primitive_avro_type is not "null":
+            primitive_avro_type = ["null", primitive_avro_type]
+
         return {
             "name": name,
-            "type": avro_type
+            "type": primitive_avro_type
         }
 
     if elem_type is list:
@@ -31,7 +35,7 @@ def _parse_avro_field(name, element, optional_primitives):
     # TODO we are assuming that all records eventually consist of primitive types
     # TODO maybe enforce this by to-json-from-json'ing all records first?
 
-    # recursive records need a little different format
+    # recursive records need a little different format - note that the "name" is duplicated in parent & child element
     return {
         "name": name,
         "type": {
@@ -42,7 +46,7 @@ def _parse_avro_field(name, element, optional_primitives):
     }
 
 
-def to_avro_fields(record, optional_primitives):
+def to_avro_fields(record: RecordDict, optional_primitives: bool) -> RecordDict:
     data = []
     for key, value in record.items():
         data.append(_parse_avro_field(key, value, optional_primitives))
@@ -51,7 +55,8 @@ def to_avro_fields(record, optional_primitives):
     }
 
 
-def create_schema_from_record(name, record, namespace=None, optional_primitives=False):
+def create_schema_from_record(name: str, record: RecordDict, namespace: str = None,
+                              optional_primitives: bool = False) -> RecordDict:
     # TODO also allow a way to make each primitive type optional
 
     # for top-level elements, the name might be either "key" or "value"
