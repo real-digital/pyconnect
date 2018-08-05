@@ -33,6 +33,7 @@ def _parse_avro_field(name, element):
     return {
         "name": name,
         "type": {
+            "name": name,
             "type": "record",
             **to_avro_fields(element)
         }

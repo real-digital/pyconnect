@@ -67,7 +67,7 @@ def produce_avro(filename, topic):
     sample_rows = read_sample_data(filename)
 
     single_sample = json.loads(sample_rows[0])
-    schema = loads(str(create_schema_from_record(f"namespace_{topic}", single_sample)))
+    schema = loads(json.dumps(create_schema_from_record(f"namespace_{topic}", single_sample)))
 
     producer = AvroProducer(
         get_avro_producer_conf(),

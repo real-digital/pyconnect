@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e1e56cb8-0fee-44af-8210-88d50519e61e" name="Default Changelist" comment="" />
+    <list default="true" id="e1e56cb8-0fee-44af-8210-88d50519e61e" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/pyconnect/avroparser.py" beforeDir="false" afterPath="$PROJECT_DIR$/pyconnect/avroparser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_avroparser.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_avroparser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_kafka_api.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_kafka_api.py" afterDir="false" />
+    </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -10,8 +14,8 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/pyconnect$scratch.coverage" NAME="scratch Coverage Results" MODIFIED="1533404299517" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />
-    <SUITE FILE_PATH="coverage/pyconnect$Pytest_API.coverage" NAME="Pytest API Coverage Results" MODIFIED="1533409830007" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/pyconnect$Pytest_Avroparser.coverage" NAME="Pytest Avroparser Coverage Results" MODIFIED="1533410070230" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/pyconnect$Pytest_API.coverage" NAME="Pytest API Coverage Results" MODIFIED="1533457054085" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/pyconnect$Pytest_Avroparser.coverage" NAME="Pytest Avroparser Coverage Results" MODIFIED="1533456860875" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/pyconnect$Pytest_Full.coverage" NAME="Pytest Full Coverage Results" MODIFIED="1533405612854" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/pyconnect$avrrr.coverage" NAME="avrrr Coverage Results" MODIFIED="1533405606475" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
   </component>
@@ -21,8 +25,8 @@
         <counts>
           <entry key="project.closed" value="1" />
           <entry key="project.open.time.0" value="1" />
-          <entry key="project.open.time.5" value="1" />
-          <entry key="project.opened" value="2" />
+          <entry key="project.open.time.5" value="2" />
+          <entry key="project.opened" value="3" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
@@ -34,7 +38,7 @@
           <entry key="gitignore" value="5" />
           <entry key="json" value="1" />
           <entry key="md" value="1" />
-          <entry key="py" value="25" />
+          <entry key="py" value="27" />
           <entry key="sample" value="2" />
           <entry key="txt" value="2" />
           <entry key="yml" value="1" />
@@ -45,7 +49,7 @@
           <entry key="Makefile" value="1" />
           <entry key="Markdown" value="1" />
           <entry key="PLAIN_TEXT" value="12" />
-          <entry key="Python" value="24" />
+          <entry key="Python" value="26" />
           <entry key="Scratch" value="3" />
           <entry key="YAML" value="1" />
         </counts>
@@ -57,7 +61,7 @@
           <entry key="gitignore" value="39" />
           <entry key="json" value="33" />
           <entry key="md" value="342" />
-          <entry key="py" value="4691" />
+          <entry key="py" value="4847" />
           <entry key="txt" value="8" />
           <entry key="yml" value="42" />
         </counts>
@@ -67,7 +71,7 @@
           <entry key="Makefile" value="264" />
           <entry key="Markdown" value="342" />
           <entry key="PLAIN_TEXT" value="72" />
-          <entry key="Python" value="4667" />
+          <entry key="Python" value="4823" />
           <entry key="Scratch" value="59" />
           <entry key="YAML" value="42" />
         </counts>
@@ -78,11 +82,14 @@
     <splitter split-orientation="horizontal" split-proportion="0.47257987">
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file pinned="false" current-in-tab="false">
+          <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/test/test_kafka_api.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="75">
-                  <caret line="5" column="58" lean-forward="true" selection-start-line="5" selection-end-line="6" />
+                <state relative-caret-position="632">
+                  <caret line="83" column="13" lean-forward="true" selection-start-line="83" selection-start-column="13" selection-end-line="83" selection-end-column="13" />
+                  <folding>
+                    <element signature="e#0#32#0" expanded="true" />
+                  </folding>
                 </state>
               </provider>
             </entry>
@@ -99,10 +106,10 @@
               </provider>
             </entry>
           </file>
-          <file pinned="false" current-in-tab="true">
+          <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/avro/schema.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="222">
+                <state relative-caret-position="271">
                   <caret line="304" selection-start-line="304" selection-end-line="304" />
                 </state>
               </provider>
@@ -111,14 +118,8 @@
           <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/pyconnect/avroparser.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="216">
-                  <caret line="50" column="29" selection-start-line="50" selection-start-column="4" selection-end-line="50" selection-end-column="29" />
-                  <folding>
-                    <marker date="1533409603427" expanded="true" signature="247:937" ph="..." />
-                    <marker date="1533409603427" expanded="true" signature="937:939" ph="..." />
-                    <marker date="1533409603427" expanded="true" signature="1673:1674" ph="..." />
-                    <marker date="1533409603427" expanded="true" signature="1769:1774" ph="..." />
-                  </folding>
+                <state relative-caret-position="510">
+                  <caret line="34" column="17" lean-forward="true" selection-start-line="34" selection-start-column="17" selection-end-line="34" selection-end-column="17" />
                 </state>
               </provider>
             </entry>
@@ -126,14 +127,35 @@
         </leaf>
       </split-first>
       <split-second>
-        <leaf>
+        <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/test/test_avroparser.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="855">
-                  <caret line="57" column="24" selection-start-line="57" selection-start-column="24" selection-end-line="57" selection-end-column="24" />
+                <state relative-caret-position="695">
+                  <caret line="73" lean-forward="true" selection-start-line="73" selection-end-line="73" />
                   <folding>
                     <element signature="e#0#58#0" expanded="true" />
+                  </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/serializer/message_serializer.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="136">
+                  <caret line="70" column="8" selection-start-line="70" selection-start-column="8" selection-end-line="70" selection-end-column="8" />
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/__init__.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="270">
+                  <caret line="48" column="42" selection-start-line="48" selection-start-column="42" selection-end-line="48" selection-end-column="42" />
+                  <folding>
+                    <element signature="e#106#152#0" expanded="true" />
                   </folding>
                 </state>
               </provider>
@@ -203,6 +225,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -224,7 +247,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -247,7 +269,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.Pytest Avroparser">
+  <component name="RunManager" selected="Python tests.Pytest API">
     <configuration name="avrrr" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="pyconnect" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -368,48 +390,48 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Pytest_API - 2018.08.04 at 21h 04m 22s.xml">
-      <configuration name="Pytest API" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_API - 2018.08.04 at 21h 07m 52s.xml">
-      <configuration name="Pytest API" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_API - 2018.08.04 at 21h 08m 01s.xml">
-      <configuration name="Pytest API" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_API - 2018.08.04 at 21h 08m 44s.xml">
-      <configuration name="Pytest API" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_API - 2018.08.04 at 21h 09m 23s.xml">
-      <configuration name="Pytest API" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_API - 2018.08.04 at 21h 10m 32s.xml">
-      <configuration name="Pytest API" configurationId="tests" />
-    </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.04 at 21h 12m 51s.xml">
+    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 10m 57s.xml">
       <configuration name="Pytest Avroparser" configurationId="tests" />
     </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.04 at 21h 13m 19s.xml">
+    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 11m 16s.xml">
       <configuration name="Pytest Avroparser" configurationId="tests" />
     </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.04 at 21h 13m 43s.xml">
+    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 11m 57s.xml">
       <configuration name="Pytest Avroparser" configurationId="tests" />
     </history-entry>
-    <history-entry file="Pytest_Avroparser - 2018.08.04 at 21h 14m 04s.xml">
+    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 13m 33s.xml">
       <configuration name="Pytest Avroparser" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 14m 01s.xml">
+      <configuration name="Pytest Avroparser" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_Avroparser - 2018.08.05 at 10h 14m 21s.xml">
+      <configuration name="Pytest Avroparser" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 10h 15m 06s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 10h 15m 43s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 10h 16m 26s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Pytest_API - 2018.08.05 at 10h 17m 30s.xml">
+      <configuration name="Pytest API" configurationId="tests" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
     <frame x="1147" y="172" width="2493" height="1415" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.14303228" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.14425828" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.5463035" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.6536965" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.30428016" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.32529184" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -437,15 +459,29 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="name is None" language="Python" />
           <url>file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/avro/schema.py</url>
-          <line>304</line>
-          <option name="timeStamp" value="4" />
+          <line>1160</line>
+          <option name="timeStamp" value="10" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/serializer/message_serializer.py</url>
+          <line>91</line>
+          <option name="timeStamp" value="15" />
         </line-breakpoint>
       </breakpoints>
+      <breakpoints-dialog>
+        <breakpoints-dialog />
+      </breakpoints-dialog>
     </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
     <expressions id="breakpointCondition">
+      <expression>
+        <expression-string>name is None</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
       <expression>
         <expression-string>record is None</expression-string>
         <language-id>Python</language-id>
@@ -453,6 +489,11 @@
       </expression>
     </expressions>
     <expressions id="evaluateExpression">
+      <expression>
+        <expression-string>loads(key_schema_str)</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
       <expression>
         <expression-string>elem_type</expression-string>
         <language-id>Python</language-id>
@@ -490,11 +531,6 @@
       </expression>
       <expression>
         <expression-string>json.loads(samples[0].replace(&quot;\n&quot;, &quot;&quot;))</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>json.loads(samples[0])</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
@@ -546,13 +582,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="28" lean-forward="true" selection-start-line="7" selection-start-column="28" selection-end-line="7" selection-end-column="28" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/avro/VERSION.txt">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
@@ -569,9 +598,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="75">
           <caret line="5" lean-forward="true" selection-end-line="5" />
-          <folding>
-            <element signature="e#0#32#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -592,13 +618,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test/avrrr.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="30">
-          <caret line="2" column="78" lean-forward="true" selection-start-line="2" selection-start-column="78" selection-end-line="2" selection-end-column="78" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/test/avrrr.py" />
     <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/avro/datafile.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="359">
@@ -615,9 +635,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state>
           <caret line="24" lean-forward="true" selection-start-line="24" selection-end-line="24" />
-          <folding>
-            <element signature="e#940#950#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -650,9 +667,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pyconnect/connect_sample.py">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/pyconnect/connect_sample.py" />
     <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/load.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="359">
@@ -663,40 +678,54 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pyconnect/avroparser.py">
+    <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/avro/schema.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="216">
-          <caret line="50" column="29" selection-start-line="50" selection-start-column="4" selection-end-line="50" selection-end-column="29" />
-          <folding>
-            <marker date="1533409603427" expanded="true" signature="247:937" ph="..." />
-            <marker date="1533409603427" expanded="true" signature="937:939" ph="..." />
-            <marker date="1533409603427" expanded="true" signature="1673:1674" ph="..." />
-            <marker date="1533409603427" expanded="true" signature="1769:1774" ph="..." />
-          </folding>
+        <state relative-caret-position="271">
+          <caret line="304" selection-start-line="304" selection-end-line="304" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test/test_avroparser.py">
+    <entry file="file://$PROJECT_DIR$/pyconnect/avroparser.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="855">
-          <caret line="57" column="24" selection-start-line="57" selection-start-column="24" selection-end-line="57" selection-end-column="24" />
-          <folding>
-            <element signature="e#0#58#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="510">
+          <caret line="34" column="17" lean-forward="true" selection-start-line="34" selection-start-column="17" selection-end-line="34" selection-end-column="17" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/test/test_kafka_api.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="75">
-          <caret line="5" column="58" lean-forward="true" selection-start-line="5" selection-end-line="6" />
+        <state relative-caret-position="632">
+          <caret line="83" column="13" lean-forward="true" selection-start-line="83" selection-start-column="13" selection-end-line="83" selection-end-column="13" />
+          <folding>
+            <element signature="e#0#32#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/avro/schema.py">
+    <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="222">
-          <caret line="304" selection-start-line="304" selection-end-line="304" />
+        <state relative-caret-position="270">
+          <caret line="48" column="42" selection-start-line="48" selection-start-column="42" selection-end-line="48" selection-end-column="42" />
+          <folding>
+            <element signature="e#106#152#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.venv/lib/python3.6/site-packages/confluent_kafka/avro/serializer/message_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="136">
+          <caret line="70" column="8" selection-start-line="70" selection-start-column="8" selection-end-line="70" selection-end-column="8" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test/test_avroparser.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="695">
+          <caret line="73" lean-forward="true" selection-start-line="73" selection-end-line="73" />
+          <folding>
+            <element signature="e#0#58#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
