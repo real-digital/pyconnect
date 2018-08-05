@@ -64,6 +64,55 @@ schema = {
     ]
 }
 
+schema_optional = {
+    "name": "all_field",
+    "namespace": "ba.nanas",
+    "type": "record",
+    "fields": [
+        {
+            "name": "fint",
+            "type": ["null", "long"]
+        },
+        {
+            "name": "fnull",
+            "type": "null"
+        },
+        {
+            "name": "ffloat",
+            "type": ["null", "double"]
+        },
+        {
+            "name": "flong",
+            "type": ["null", "long"]
+        },
+        {
+            "name": "fdouble",
+            "type": ["null", "double"]
+        },
+        {
+            "name": "fstring",
+            "type": ["null", "string"]
+        },
+        {
+            "name": "fobj",
+            "type": {
+                "name": "fobj",
+                "fields": [
+                    {
+                        "name": "fobjint",
+                        "type": ["null", "long"]
+                    },
+                    {
+                        "name": "fobjstr",
+                        "type": ["null", "string"]
+                    }
+                ],
+                "type": "record"
+            }
+        }
+    ]
+}
+
 def test_avro_schema_generation():
     # Sanity check - this should not throw
     loads(json.dumps(schema))
@@ -73,3 +122,10 @@ def test_avro_schema_generation():
     assert _schema == _generated, f"Generated schema does not match!"
 
 
+def test_avro_schema_generation_optional():
+    # Sanity check - this should not throw
+    loads(json.dumps(schema_optional))
+    generated = create_schema_from_record("all_field", data, namespace="ba.nanas", optional_primitives=True)
+    _generated = json.dumps(generated, sort_keys=True)
+    _schema = json.dumps(schema_optional, sort_keys=True)
+    assert _schema == _generated, f"Generated schema does not match!"

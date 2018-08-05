@@ -10,13 +10,15 @@ SIMPLE_TYPE_MAP = {
 }
 
 
-def _parse_avro_field(name, element):
+def _parse_avro_field(name, element, optional_primitives):
 
     elem_type = type(element)
 
     # simple types
     avro_type = SIMPLE_TYPE_MAP.get(elem_type, None)
     if avro_type is not None:
+        if optional_primitives is True and avro_type is not "null":
+            avro_type = ["null", avro_type]
         return {
             "name": name,
             "type": avro_type
@@ -35,28 +37,28 @@ def _parse_avro_field(name, element):
         "type": {
             "name": name,
             "type": "record",
-            **to_avro_fields(element)
+            **to_avro_fields(element, optional_primitives)
         }
     }
 
 
-def to_avro_fields(record):
+def to_avro_fields(record, optional_primitives):
     data = []
     for key, value in record.items():
-        data.append(_parse_avro_field(key, value))
+        data.append(_parse_avro_field(key, value, optional_primitives))
     return {
         "fields": data
     }
 
 
-def create_schema_from_record(name, record, namespace=None):
+def create_schema_from_record(name, record, namespace=None, optional_primitives=False):
     # TODO also allow a way to make each primitive type optional
 
     # for top-level elements, the name might be either "key" or "value"
     template = {
         "name": name,
         "type": "record",
-        **to_avro_fields(record)
+        **to_avro_fields(record, optional_primitives)
     }
 
     # This is optional - should be specified for root-level schemata but not necessary for recursive records
@@ -64,10 +66,3 @@ def create_schema_from_record(name, record, namespace=None):
         template["namespace"] = namespace
 
     return template
-
-def parse_avro_schema_from_json_schema(json_schema):
-    return Parse(str(json_schema))
-
-def infer_schema_from_record(name, record, namespace=None):
-    schema = create_schema_from_record(name, record, namespace=namespace)
-    return parse_avro_schema_from_json_schema()
