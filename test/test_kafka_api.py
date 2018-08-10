@@ -4,7 +4,7 @@ from confluent_kafka.avro import AvroProducer, AvroConsumer, loads
 
 from pyconnect.avroparser import create_schema_from_record
 from .message_utils import TIMEOUT, make_rand_text, get_producer_conf, get_avro_producer_conf, get_consumer_conf, \
-    get_avro_consumer_conf, create_sample_data, read_sample_data, producer_callback, compare_data_with_file
+    get_avro_consumer_conf, write_sample_data, read_sample_data, producer_callback, compare_data_with_file
 
 
 # Producers and consumers
@@ -76,7 +76,7 @@ def consume_avro(topic, consumer):
 def test_cluster_json():
     test_name = "test_" + make_rand_text(10)
     consumer = Consumer(get_consumer_conf())
-    create_sample_data(test_name, sample_size=50)
+    write_sample_data(test_name, sample_size=50)
     produce_json(test_name, test_name)
     sample_data = consume_json(test_name, consumer)
     compare_data_with_file(sample_data, test_name)
@@ -85,7 +85,7 @@ def test_cluster_json():
 def test_cluster_avro():
     test_name = "test_" + make_rand_text(10)
     consumer = AvroConsumer(get_avro_consumer_conf())
-    create_sample_data(test_name, sample_size=50)
+    write_sample_data(test_name, sample_size=50)
     produce_avro(test_name, test_name)
     sample_data = consume_avro(test_name, consumer)
     compare_data_with_file(sample_data, test_name)
