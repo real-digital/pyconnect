@@ -1,15 +1,18 @@
 import json
-from typing import Dict, Any, List, Callable
+from typing import Dict, Any, List, Callable, TYPE_CHECKING, Union
 
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError
 
-from time import sleep
-
 from enum import Enum
+
+if TYPE_CHECKING:
+    from confluent_kafka import Message
+
 
 def noop(*args, **kwargs):
     pass
+
 
 class Status(Enum):
     INITIALIZING = 0
@@ -28,7 +31,7 @@ class PyConnectSinkFile:
         self.flush_after: int = config["flush_after"]
         self.on_message_handled: Callable = config.get("on_message_handled", noop)
         self.on_empty_poll: Callable = config.get("on_empty_poll", noop)
-        self.state: Status = Status.INITIALIZING
+        self.status: Status = Status.INITIALIZING
 
         self.processed: int = 0
         self.poll_timeout: int = config.get("poll_timeout", 0.5)
@@ -38,11 +41,25 @@ class PyConnectSinkFile:
         self._consumer: AvroConsumer = None
         self._init_consumer()
 
-    def _init_consumer(self):
+    def handle_message(self, msg: "Message") -> None:
+        with open(self.filename, "a") as outfile:
+            outfile.write(json.dumps(msg.value()) + "\n")
+
+    def stop(self) -> None:
+        self.status = Status.STOPPED
+
+    def run(self) -> None:
+        self.status = Status.RUNNING
+        while self.status == Status.RUNNING:
+            msg = self._consumer.poll(self.poll_timeout)
+            self._handle_response(msg)
+
+
+    def _init_consumer(self) -> None:
         self._consumer = AvroConsumer(self._get_consumer_config())
         self._consumer.subscribe([self.topic])
 
-    def _get_consumer_config(self):
+    def _get_consumer_config(self) -> Dict[str, Union[str, Dict[str, str]]]:
         return {
             "bootstrap.servers": self.brokers,
             "group.id": self.connect_name,
@@ -53,7 +70,7 @@ class PyConnectSinkFile:
                 }
         }
 
-    def _handle_message_internal(self, msg):
+    def _handle_message_internal(self, msg: "Message") -> None:
         self.handle_message(msg)
         self.processed += 1
         if self.processed % self.flush_after:
@@ -72,27 +89,15 @@ class PyConnectSinkFile:
     def _flush_back(self):
         pass  # TODO Write test for that first
 
-    def handle_message(self, msg):
-        with open(self.filename, "a") as outfile:
-            outfile.write(json.dumps(msg.value()) + "\n")
 
-    def stop(self):
-        self.status = Status.STOPPED
 
-    def run(self):
-        self.status = Status.RUNNING
-        while self.status == Status.RUNNING:
-            msg = self._consumer.poll(self.poll_timeout)
-            self._handle_response(msg)
-        return None
-
-    def _handle_response(self, msg):
+    def _handle_response(self, msg: "Message") -> None:
         # Both of those cases are simple "we have no further messages available" messages
         # EOF is returned the first time we hit the EOF, from then on we get None's afer the poll()'s timeout runs out
         if msg is None or (msg.error() and msg.error().code() == KafkaError._PARTITION_EOF):
             self._run_callback(self.on_empty_poll)
         elif msg.error():
-                self.status = Status.CRASHED
-                print("FATAL::", msg.error())
+            self.status = Status.CRASHED
+            print("FATAL::", msg.error())
         else:
             self._handle_message_internal(msg)

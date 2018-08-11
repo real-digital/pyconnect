@@ -17,7 +17,7 @@ def produce_json(filename, topic):
     producer.flush()
 
 
-def produce_avro(filename, topic):
+def produce_avro_from_file(filename, topic):
     sample_rows = read_sample_data(filename)
 
     single_sample = json.loads(sample_rows[0])
@@ -86,6 +86,6 @@ def test_cluster_avro():
     test_name = "test_" + make_rand_text(10)
     consumer = AvroConsumer(get_avro_consumer_conf())
     write_sample_data(test_name, sample_size=50)
-    produce_avro(test_name, test_name)
+    produce_avro_from_file(test_name, test_name)
     sample_data = consume_avro(test_name, consumer)
     compare_data_with_file(sample_data, test_name)

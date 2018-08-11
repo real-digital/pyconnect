@@ -44,10 +44,10 @@ def create_sample_data(sample_size=1000):
     return data
 
 
-def write_sample_data(filename, sample_size=1000):
+def write_sample_data(filename, sample_size=1000, mode="w"):
     data = create_sample_data(sample_size)
     data_str = "\n".join(json.dumps(d) for d in data) + "\n"
-    with open(f"test/testdata/{filename}", "w") as outfile:
+    with open(f"test/testdata/{filename}", mode) as outfile:
         outfile.write(data_str)
 
 
