@@ -1,11 +1,9 @@
-import json
+from abc import ABCMeta, abstractmethod
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Dict, Any, List, Callable, TYPE_CHECKING, Union, Optional, Tuple
+from typing import Dict, Any, List, Callable, TYPE_CHECKING, Optional
 
-from avro.schema import Schema
-from confluent_kafka.avro import AvroConsumer, AvroProducer
-from confluent_kafka.avro import loads
+from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError
 
 if TYPE_CHECKING:
@@ -81,70 +79,7 @@ class PyConnectSink(metaclass=ABCMeta):
         self.current_consumed_offset = None
         self.current_produced_offset = None
 
-        self._consumer: AvroConsumer = None
-        self._init_consumer()
-
-        self._producer: AvroProducer = None
-        self._init_producer()
-
-    # various initializers and configs
-
-    def _init_consumer(self) -> None:
-        self._consumer = AvroConsumer(self._get_consumer_config())
-        self._consumer.subscribe([self.topic])
-
-    def _init_producer(self) -> None:
-        key_schema, value_schema = self._get_connect_offset_schema()
-        self._producer = AvroProducer(
-            self._get_producer_config(),
-            default_key_schema=key_schema,
-            default_value_schema=value_schema
-        )
-
-    def _get_producer_config(self) -> Dict[str, Union[str, Dict[str, str]]]:
-        return {
-            "bootstrap.servers": self.brokers,
-            "schema.registry.url": self.schema_registry
-        }
-
-    def _get_consumer_config(self) -> Dict[str, Union[str, Dict[str, str]]]:
-        return {
-            "bootstrap.servers": self.brokers,
-            "group.id": self.connect_name,
-            "schema.registry.url": self.schema_registry,
-            "enable.auto.commit": False,  # We need to commit offsets manually once we"re sure it got saved to the sink
-            "default.topic.config":  # TODO figure out: why do we actually need this?
-                {
-                    "auto.offset.reset": "earliest"
-                },
-            **self.consumer_options
-        }
-
-    def _get_connect_offset_schema(self) -> Tuple[Schema, Schema]:
-        key_schema = {
-            "name": "key",
-            "namespace": f"pyconnect_offsets.{self.connect_name}",
-            "type": "record",
-            "fields": [
-                {
-                    "name": "connector_name",
-                    "type": "string"
-                }
-            ]
-        }
-        value_schema = {
-            "name": "value",
-            "namespace": f"pyconnect_offsets.{self.connect_name}",
-            "type": "record",
-            "fields": [
-                {
-                    "name": "offset",
-                    "type": "long"
-                }
-            ]
-        }
-
-        return loads(json.dumps(key_schema)), loads(json.dumps(value_schema))
+        self._consumer: AvroConsumer = self._make_consumer()
 
     # public functions
 
@@ -163,6 +98,22 @@ class PyConnectSink(metaclass=ABCMeta):
 
     # internal functions with business logic
 
+    def _make_consumer(self) -> AvroConsumer:
+        config = {
+            "bootstrap.servers": self.brokers,
+            "group.id": self.connect_name,
+            "schema.registry.url": self.schema_registry,
+            "enable.auto.commit": False,  # We need to commit offsets manually once we"re sure it got saved to the sink
+            "default.topic.config":  # TODO figure out: why do we actually need this?
+                {
+                    "auto.offset.reset": "earliest"
+                },
+            **self.consumer_options
+        }
+        consumer = AvroConsumer(config)
+        consumer.subscribe([self.topic])
+        return consumer
+
     def _handle_message_internal(self, msg: "Message") -> None:
         self.current_consumed_offset = msg.offset()
         self.handle_message(msg)
@@ -171,15 +122,6 @@ class PyConnectSink(metaclass=ABCMeta):
             self._flush_back(msg)
             self.current_produced_offset = msg.offset()
         self._run_callback(self.on_message_handled)
-
-    def _run_callback(self, callback: Callback, *args: List[Any], **kwargs: Dict[Any, Any]) -> None:
-        """Runs a given callback and handles the (optional) return value to (maybe) change the connector status"""
-        new_status = callback(self, *args, **kwargs)
-        if new_status is None:
-            return
-        if new_status not in Status:
-            raise ValueError(f"Callback {str(callback)} must either return None or a valid Status")
-        self.status = new_status
 
     def _flush_back(self, msg: "Message"):
         """Called every time {self.flush_after}s messages have been written to the sink to write this info into kafka
@@ -200,6 +142,14 @@ class PyConnectSink(metaclass=ABCMeta):
             self._handle_message_internal(msg)
 
     # internal utility functions
+    def _run_callback(self, callback: Callback, *args: List[Any], **kwargs: Dict[Any, Any]) -> None:
+        """Runs a given callback and handles the (optional) return value to (maybe) change the connector status"""
+        new_status = callback(self, *args, **kwargs)
+        if new_status is None:
+            return
+        if new_status not in Status:
+            raise ValueError(f"Callback {str(callback)} must either return None or a valid Status")
+        self.status = new_status
 
     def _debug_message(self, msg: "Message") -> Dict[str, Any]:
         return {a: getattr(msg, a)() for a in dir(msg) if not (a.startswith("__") or a.startswith("set"))}
