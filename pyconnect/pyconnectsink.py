@@ -1,12 +1,12 @@
 import json
+from abc import ABCMeta, abstractmethod
+from enum import Enum
 from typing import Dict, Any, List, Callable, TYPE_CHECKING, Union, Optional, Tuple
 
-from confluent_kafka.avro import AvroConsumer, AvroProducer
 from avro.schema import Schema
-from confluent_kafka.cimpl import KafkaError
+from confluent_kafka.avro import AvroConsumer, AvroProducer
 from confluent_kafka.avro import loads
-
-from enum import Enum
+from confluent_kafka.cimpl import KafkaError
 
 if TYPE_CHECKING:
     from confluent_kafka import Message
@@ -27,7 +27,7 @@ def noop(*args, **kwargs):
 Callback = Callable[..., Optional[Status]]
 
 
-class PyConnectSinkFile:
+class PyConnectSink(metaclass=ABCMeta):
     """
 
     There are a row of steps that a connector goes through:
@@ -76,8 +76,6 @@ class PyConnectSinkFile:
         self.processed: int = 0
         self.current_consumed_offset = None
         self.current_produced_offset = None
-
-        self.filename: str = config["filename"]
 
         self._consumer: AvroConsumer = None
         self._init_consumer()
@@ -145,9 +143,9 @@ class PyConnectSinkFile:
 
     # public functions
 
+    @abstractmethod
     def handle_message(self, msg: "Message") -> None:
-        with open(self.filename, "a") as outfile:
-            outfile.write(json.dumps(msg.value()) + "\n")
+        raise NotImplementedError("Need to implement and call this on a subclass")
 
     def stop(self) -> None:
         self.status = Status.STOPPED

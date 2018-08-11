@@ -1,4 +1,5 @@
-from pyconnect.pyconnectsink import PyConnectSinkFile, Status
+from pyconnect.pyconnectsinkfile import PyConnectSinkFile
+from pyconnect.pyconnectsink import Status
 from test.test_kafka_api import produce_avro_from_file
 from .message_utils import make_rand_text, write_sample_data, compare_file_with_file, DEFAULT_SCHEMA_REGISTRY, \
     DEFAULT_BROKER
@@ -12,7 +13,7 @@ def merge_files(all_files, outfile):
                 for row in infile:
                     merged_file.write(row)
 
-
+#@pytest.mark.skip()
 def test_csink_simple():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
@@ -42,7 +43,7 @@ def test_csink_simple():
     PyConnectSinkFile(**sink_conf).run()
     compare_file_with_file(connector_out_filename, test_name)
 
-@pytest.mark.skip()
+#@pytest.mark.skip()
 def test_csink_stop_and_resume():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
@@ -68,7 +69,7 @@ def test_csink_stop_and_resume():
 
     compare_file_with_file(connector_out_filename, test_name)
 
-@pytest.mark.skip()
+#@pytest.mark.skip()
 def test_csink_reach_end_and_resume():
     test_name = "test_" + make_rand_text(10)
     second_test_name = "second_" + test_name
