@@ -1,12 +1,14 @@
 from pyconnect.pyconnectsink import PyConnectSinkFile, Status
 from test.test_kafka_api import produce_avro_from_file
-from .message_utils import make_rand_text, write_sample_data, compare_file_with_file, DEFAULT_SCHEMA_REGISTRY, DEFAULT_BROKER
+from .message_utils import make_rand_text, write_sample_data, compare_file_with_file, DEFAULT_SCHEMA_REGISTRY, \
+    DEFAULT_BROKER
 import pytest
 
+
 def merge_files(all_files, outfile):
-    with open(outfile, "w") as merged_file:
+    with open(f"test/testdata/{outfile}", "w") as merged_file:
         for file in all_files:
-            with open(file) as infile:
+            with open(f"test/testdata/{file}") as infile:
                 for row in infile:
                     merged_file.write(row)
 
@@ -20,6 +22,7 @@ def test_csink_simple():
     produce_avro_from_file(test_name, test_name)
 
     wait_polls = 5
+
     def stop_after_some_polls(self):
         nonlocal wait_polls
         wait_polls -= 1
@@ -39,15 +42,14 @@ def test_csink_simple():
     PyConnectSinkFile(**sink_conf).run()
     compare_file_with_file(connector_out_filename, test_name)
 
-
-def test_csink_resume():
+@pytest.mark.skip()
+def test_csink_stop_and_resume():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
     samples = 10
 
     write_sample_data(test_name, sample_size=samples)
     produce_avro_from_file(test_name, test_name)
-
 
     sink_conf = {
         "connect_name": test_name,
@@ -66,7 +68,8 @@ def test_csink_resume():
 
     compare_file_with_file(connector_out_filename, test_name)
 
-def test_csink_flush_and_resume():
+@pytest.mark.skip()
+def test_csink_reach_end_and_resume():
     test_name = "test_" + make_rand_text(10)
     second_test_name = "second_" + test_name
     connector_out_filename = "sink_" + test_name
@@ -85,12 +88,10 @@ def test_csink_flush_and_resume():
     }
     pc = PyConnectSinkFile(**sink_conf)
 
-
-    write_sample_data(second_test_name, sample_size=samples)
+    write_sample_data(test_name, sample_size=samples)
     produce_avro_from_file(test_name, test_name)
     pc.run()
-     # will return once poll is empty
-
+    # will return once poll is empty
 
     write_sample_data(second_test_name, sample_size=samples)
     produce_avro_from_file(second_test_name, test_name)

@@ -1,6 +1,7 @@
 import json
-from confluent_kafka import Producer, Consumer, KafkaError
+
 from confluent_kafka.avro import AvroProducer, AvroConsumer, loads
+from confluent_kafka.cimpl import Producer, Consumer, KafkaError
 
 from pyconnect.avroparser import create_schema_from_record
 from .message_utils import TIMEOUT, make_rand_text, get_producer_conf, get_avro_producer_conf, get_consumer_conf, \
