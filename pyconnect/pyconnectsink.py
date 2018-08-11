@@ -32,29 +32,32 @@ class PyConnectSink(metaclass=ABCMeta):
 
     There are a row of steps that a connector goes through:
 
-    listen to topic X and poll for new messages
+    create a consumer configured to _NOT_ automatically commit any consumed messages back to kafka automatically
+    make the consumer listen to topic X and poll for new messages
     for each incoming message X:
-        the consumer-group's offset will automatically be incremented to signal that X has been received by the group
         handle it depending on the applications needs (write to file, to db, ...)
-        if [flush size] amount of messages that have been handled:
-             manually write the current offset into a special kafka topic
-             to signal that X messages have been delivered to the sink
+        this is forwarded to the specific sub-classes `handle_message()` method that it _must_ implement
+        each [flush size] amount of messages that have been handled, do:
+             manually commit the current consumer-groups offset back into kafka
+             in order to signal that X messages have been delivered to the sink
 
-    This "2-phase saving of offsets" makes sure that we can still provide at-least-once guarantees for the sink:
-        If a message from kafka is consumed by the consumer group, and the connector dies/stops before this
-        message is written into the actual sink, the connector might just assume it has been saved to the sink and not
-        read it again once the connector restarts (since it will pick up where the consumer-group stopped).
-        By committing back the "offset we've actually managed to write to the sink" into kafka, we are able to
-        fine-tune this behaviour so that we can reset the consumer-group offset and re-try to send some messages in
-        cases where the connector stopped/crashed after reading but before writing.
+    Avoiding to immediately acknowledge any incoming messages from kafka, and instead only committing when it's saved
+    in the sink, makes sure that we can still provide at-least-once guarantees for the sink. Consider this case:
+        If a message from kafka is consumed by the consumer group, and the connector dies/stops before this message
+        is written into the actual sink, the connector might just assume it has been saved to the sink and not read it
+        again once the connector restarts (since, per default, it will pick up where the consumer-group last fetched).
+        By committing back the consumer-groups into kafka only when it's actually in the sink, we are able to
+        fine-tune this behaviour so that we can re-try to send some messages in cases where the connector
+        stopped/crashed after reading but before writing.
 
-    This, however, makes the "start connector" part of the code more complex:
-        We need to reset the consumer-group offsets and seek to the specific point Y in the topic where we're sure
-        that message Y has actually been delivered to the sink, and then continue with message Y+1.
-        In that sense, the actual consumer-group offsets only indicates the approximate "area" of the topic,
-        but it doesn't really help us in achieving "at least once" guarantees.
+    However, it might still happen that messages are sent to the sink twice. Consider this case:
+        The connector gets a message from kafka, writes it correctly into the sink, but crashes before it's able to
+        commit this message back to kafka. When the connector is restarted, it will read the last message from kafka
+        again and try to save it in the sink a second time.
 
-    TODO: might not be necessary: maybe we can use https://docs.confluent.io/current/clients/consumer.html#configuration
+    That means that a connector implementation shoud either (a) somehow check that the message has not yet been sent to
+    the sink in earlier runs or (b) use only idempotent write operations to the sink so more-than-once-delivery
+    is not a problem for the sink
     """
 
     def __init__(self, **config: Dict[str, Any]) -> None:
@@ -71,6 +74,7 @@ class PyConnectSink(metaclass=ABCMeta):
         self.on_message_handled: Callable = config.get("on_message_handled", noop)
         self.on_empty_poll: Callable = config.get("on_empty_poll", noop)
         self.poll_timeout: int = config.get("poll_timeout", 0.5)
+        self.consumer_options: Dict[str, str] = config.get("consumer_options", {})
 
         self.status: Status = Status.NOT_YET_RUNNING
         self.processed: int = 0
@@ -108,11 +112,12 @@ class PyConnectSink(metaclass=ABCMeta):
             "bootstrap.servers": self.brokers,
             "group.id": self.connect_name,
             "schema.registry.url": self.schema_registry,
-            'auto.offset.reset': 'smallest',
-            'default.topic.config':
+            "enable.auto.commit": False,  # We need to commit offsets manually once we"re sure it got saved to the sink
+            "default.topic.config":  # TODO figure out: why do we actually need this?
                 {
-                    'auto.offset.reset': 'smallest'
-                }
+                    "auto.offset.reset": "earliest"
+                },
+            **self.consumer_options
         }
 
     def _get_connect_offset_schema(self) -> Tuple[Schema, Schema]:
@@ -180,19 +185,12 @@ class PyConnectSink(metaclass=ABCMeta):
         """Called every time {self.flush_after}s messages have been written to the sink to write this info into kafka
 
         """
-        # TODO ensure topic exists and has only 1 partition in a separate function
-        self._producer.produce(
-            topic=self.offset_topic_name,
-            key={"connector_name": self.connect_name},
-            value={"offset": msg.offset()}
-        )
-
-        pass  # TODO Write test for that first
+        self._consumer.commit(message=msg, asynchronous=False)
 
     def _handle_response(self, msg: "Message") -> None:
         """Handles errors of the raw message and then relays the message to `self._handle_message_internal()`"""
         # Both of those cases are simple "we have no further messages available" messages
-        # EOF is returned the first time we hit the EOF, from then on we get None's afer the poll()'s timeout runs out
+        # EOF is returned the first time we hit the EOF, from then on we get None"s afer the poll()"s timeout runs out
         if msg is None or (msg.error() and msg.error().code() == KafkaError._PARTITION_EOF):
             self._run_callback(self.on_empty_poll)
         elif msg.error():
