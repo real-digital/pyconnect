@@ -54,7 +54,7 @@ def test_csink_simple():
 
 
 @pytest.mark.skip()
-def test_csink_stop_and_resume():
+def test_csink_stop_and_restart():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
 
@@ -69,13 +69,31 @@ def test_csink_stop_and_resume():
 
     pc = PyConnectSinkFile(**sink_conf)
     pc.run()
+    pc = PyConnectSinkFile(**sink_conf)
     pc.run()
 
     compare_file_with_file(connector_out_filename, test_name)
 
+@pytest.mark.skip()
+def test_csink_no_rerun():
+    test_name = "test_" + make_rand_text(10)
+    connector_out_filename = "sink_" + test_name
+
+    write_sample_data(test_name, sample_size=SAMPLE_AMOUNT)
+    produce_avro_from_file(test_name, test_name)
+
+    sink_conf = {
+        **get_default_conf(test_name, connector_out_filename),
+        "on_message_handled": lambda s: Status.STOPPED if s.processed == 1 else None
+    }
+
+    pc = PyConnectSinkFile(**sink_conf)
+    pc.run()
+    with pytest.raises(RuntimeError):
+        pc.run()
 
 @pytest.mark.skip()
-def test_csink_reach_end_and_resume():
+def test_csink_reach_end_and_restart():
     test_name = "test_" + make_rand_text(10)
     second_test_name = "second_" + test_name
     connector_out_filename = "sink_" + test_name
@@ -95,6 +113,7 @@ def test_csink_reach_end_and_resume():
 
     write_sample_data(second_test_name, sample_size=SAMPLE_AMOUNT)
     produce_avro_from_file(second_test_name, test_name)
+    pc = PyConnectSinkFile(**sink_conf)
     pc.run()
 
     merge_files([test_name, second_test_name], merged_filename)
@@ -102,7 +121,7 @@ def test_csink_reach_end_and_resume():
 
 
 @pytest.mark.skip()
-def test_csink_reach_end_recreate_and_resume():
+def test_csink_reach_end_recreate_and_restart():
     test_name = "test_" + make_rand_text(10)
     second_test_name = "second_" + test_name
     connector_out_filename = "sink_" + test_name
@@ -127,14 +146,14 @@ def test_csink_reach_end_recreate_and_resume():
     merge_files([test_name, second_test_name], merged_filename)
     compare_file_with_file(connector_out_filename, merged_filename)
 
-
-def test_csink_fail_before_write_to_sink_then_resume():
+@pytest.mark.skip()
+def test_csink_fail_before_write_to_sink_then_restart():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
 
     sink_conf = {
         **get_default_conf(test_name, connector_out_filename),
-        "fail_before_counter": 3,
+        "fail_before_counter": 8,
         "on_empty_poll": lambda x: Status.STOPPED
     }
     pc = PyConnectSinkFile(**sink_conf)
@@ -143,18 +162,18 @@ def test_csink_fail_before_write_to_sink_then_resume():
     produce_avro_from_file(test_name, test_name)
     pc.run()
     # will return once connector failed
+    pc = PyConnectSinkFile(**sink_conf)
     pc.run()
 
     compare_file_with_file(test_name, connector_out_filename)
 
-@pytest.mark.skip()
-def test_csink_fail_after_write_to_sink_then_resume():
+def test_csink_fail_after_write_to_sink_then_restart():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
 
     sink_conf = {
         **get_default_conf(test_name, connector_out_filename),
-        "fail_after_counter": 3,
+        "fail_after_counter": 8,
         "on_empty_poll": lambda x: Status.STOPPED
     }
     pc = PyConnectSinkFile(**sink_conf)
@@ -163,6 +182,7 @@ def test_csink_fail_after_write_to_sink_then_resume():
     produce_avro_from_file(test_name, test_name)
     pc.run()
     # will return once connector failed
+    pc = PyConnectSinkFile(**sink_conf)
     pc.run()
 
     compare_file_with_file(test_name, connector_out_filename)

@@ -19,5 +19,9 @@ consume-%:
 list-topics:
 	kafkacat -b localhost:9092 -L
 
-check-connect-offsets:
-	../confluent/bin/kafka-avro-console-consumer --bootstrap-server localhost:9092 --from-beginning --topic _pyconnect_offsets
+GROUP := None
+
+check-offsets:
+	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --offsets --verbose
+	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --state --verbose
+	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --members --verbose

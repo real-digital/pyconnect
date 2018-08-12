@@ -110,6 +110,9 @@ class PyConnectSink(metaclass=ABCMeta):
         raise NotImplementedError("Need to implement and call this on a subclass")
 
     def run(self) -> None:
+        if not self.status == Status.NOT_YET_RUNNING:
+            raise RuntimeError("Can not re-start a failed/stopped connector, need to re-create a Connect instance")
+
         self.status = Status.RUNNING
         self.status_message = self.status.name
         while self.status == Status.RUNNING:
