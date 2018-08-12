@@ -20,16 +20,22 @@ class Status(Enum):
 # Type definitions
 Callback = Callable[..., Optional[Status]]
 
+ERROR_MESSAGE = """Connector crashed when processing message nr {}.
+Error Message and Trace:
+{}
+"""
+
 
 class PyConnectSink(metaclass=ABCMeta):
-    """
+    """ This is the base class that all custom sink connectors need to inherit
 
     There are a row of steps that a connector goes through:
 
     create a consumer configured to _NOT_ automatically commit any consumed messages back to kafka automatically
     make the consumer listen to topic X and poll for new messages
     for each incoming message X:
-        handle it depending on the applications needs (write to file, to db, ...)
+        check and handle API-dependent errors, edge cases etc.
+        handle the message depending on the applications needs (write to file, to db, ...)
         this is forwarded to the specific sub-classes `handle_message()` method that it _must_ implement
         each [flush size] amount of messages that have been handled, do:
              manually commit the current consumer-groups offset back into kafka
@@ -69,6 +75,7 @@ class PyConnectSink(metaclass=ABCMeta):
         self.consumer_options: Dict[str, str] = config.get("consumer_options", {})
 
         self.status: Status = Status.NOT_YET_RUNNING
+        self.status_message = self.status.name
         self.processed: int = 0
 
         self._consumer: AvroConsumer = self._make_consumer()
@@ -84,6 +91,7 @@ class PyConnectSink(metaclass=ABCMeta):
 
     def run(self) -> None:
         self.status = Status.RUNNING
+        self.status_message = self.status.name
         while self.status == Status.RUNNING:
             msg = self._consumer.poll(self.poll_timeout)
             self._handle_response(msg)
@@ -115,17 +123,25 @@ class PyConnectSink(metaclass=ABCMeta):
         return consumer
 
     def _handle_message_internal(self, msg: "Message") -> None:
-        self.handle_message(msg)
+        try:
+            self.handle_message(msg)
+        except Exception as e:
+            self.status = Status.CRASHED
+            self.status_message = ERROR_MESSAGE.format(msg.offset(), str(e))
+            return
+
         self.processed += 1
-        if self.processed % self.flush_after == 0:
-            self._flush_back(msg)
+        self._maybe_flush_back(msg)
+
         self._run_callback(self.on_message_handled)
 
-    def _flush_back(self, msg: "Message"):
-        """Called every time {self.flush_after}s messages have been written to the sink to write this info into kafka
+    def _maybe_flush_back(self, msg: "Message"):
+        """Every time {self.flush_after}s messages have been written to the sink, write this info back into kafka
 
+        TODO: Ensure flush also when there is a period of empty/no messages after some timeout
         """
-        self._consumer.commit(message=msg, asynchronous=False)
+        if self.processed % self.flush_after == 0:
+            self._consumer.commit(message=msg, asynchronous=False)  # Blocking commit!
 
     def _handle_response(self, msg: "Message") -> None:
         """Handles errors of the raw message and then relays the message to `self._handle_message_internal()`"""
