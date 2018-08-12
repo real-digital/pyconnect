@@ -74,11 +74,26 @@ class PyConnectSink(metaclass=ABCMeta):
         self.poll_timeout: int = config.get("poll_timeout", 0.5)
         self.consumer_options: Dict[str, str] = config.get("consumer_options", {})
 
-        self.status: Status = Status.NOT_YET_RUNNING
+        # The status can be changed from different events, like stopping from callbacks or crashing
+        self._status: Status = Status.NOT_YET_RUNNING
         self.status_message = self.status.name
+
         self.processed: int = 0
 
         self._consumer: AvroConsumer = self._make_consumer()
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, new_status: Status):
+        """Property that makes sure that status changes trigger the corresponding hooks"""
+        self._status = new_status
+        if self._status == Status.STOPPED:
+            self.stop()
+        elif self._status == Status.CRASHED:
+            self.crash()
 
     # public functions
 
@@ -86,8 +101,13 @@ class PyConnectSink(metaclass=ABCMeta):
     def handle_message(self, msg: "Message") -> None:
         raise NotImplementedError("Need to implement and call this on a subclass")
 
+    @abstractmethod
     def stop(self) -> None:
-        self.status = Status.STOPPED
+        raise NotImplementedError("Need to implement and call this on a subclass")
+
+    @abstractmethod
+    def crash(self) -> None:
+        raise NotImplementedError("Need to implement and call this on a subclass")
 
     def run(self) -> None:
         self.status = Status.RUNNING
@@ -112,7 +132,7 @@ class PyConnectSink(metaclass=ABCMeta):
             "group.id": self.connect_name,
             "schema.registry.url": self.schema_registry,
             "enable.auto.commit": False,  # We need to commit offsets manually once we"re sure it got saved to the sink
-            "default.topic.config":  # TODO figure out: why do we actually need this?
+            "default.topic.config":  # We need this to start at the earliest offset instead of the latest when resuming
                 {
                     "auto.offset.reset": "earliest"
                 },
