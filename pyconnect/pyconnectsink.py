@@ -60,7 +60,7 @@ class PyConnectSink(metaclass=ABCMeta):
     """
 
     def __init__(self, **config: Dict[str, Any]) -> None:
-
+        # TODO consider prefixing all variables with "__" to avoid name clashes in subclasses
         self.connect_name: str = config["connect_name"]
         self.brokers: str = config["brokers"]
         self.topic: str = config["topic"]
@@ -71,15 +71,42 @@ class PyConnectSink(metaclass=ABCMeta):
         # TODO make sure this is a valid topic name
         self.offset_topic_name = config.get("offset_topic_name", f"_pyconnect_offsets")
         self.poll_timeout: int = config.get("poll_timeout", 0.5)
+        self.flush_after_consecutive_empty_polls: int = config.get("flush_after_consecutive_empty_polls", 50)
         self.consumer_options: Dict[str, str] = config.get("consumer_options", {})
 
         # The status can be changed from different events, like stopping from callbacks or crashing
         self._status: Status = Status.NOT_YET_RUNNING
         self.status_message = self.status.name
 
-        self.processed: int = 0
+        # Those variables keep track of the current state of the connect instance
+        self._processed: int = 0
+        self._consecutive_empty_polls: int = 0
+        self.current_message: Message = None
 
         self._consumer: AvroConsumer = self._make_consumer()
+
+    @property
+    def processed(self):
+        return self._processed
+
+    @processed.setter
+    def processed(self, new_value):
+        self._processed = new_value
+        # No flush when it's set to zero since that happens only once at initialization when there isn't a message yet
+        if new_value != 0 and new_value % self.flush_after == 0:
+            self._flush_back()
+
+    @property
+    def consecutive_empty_polls(self):
+        return self._consecutive_empty_polls
+
+    @consecutive_empty_polls.setter
+    def consecutive_empty_polls(self, new_value):
+        self._consecutive_empty_polls = new_value
+        # Flush only at the exact point where we reach this number since it doesn't make sense to flush each N messages
+        # when a new message hasn't come in in the meantime
+        if new_value == self.flush_after_consecutive_empty_polls:
+            self._flush_back()
 
     @property
     def status(self):
@@ -144,38 +171,39 @@ class PyConnectSink(metaclass=ABCMeta):
         consumer.subscribe([self.topic])
         return consumer
 
-    def _handle_message_internal(self, msg: "Message") -> None:
+    def _handle_message_internal(self) -> None:
         try:
-            self.handle_message(msg)
+            self.handle_message(self.current_message)
         except Exception as e:
             self.status = Status.CRASHED
-            self.status_message = ERROR_MESSAGE.format(msg.offset(), str(e))
+            self.status_message = ERROR_MESSAGE.format(self.current_message.offset(), str(e))
             return
 
         self.processed += 1
-        self._maybe_flush_back(msg)
 
         self._run_callback(self.on_message_handled)
 
-    def _maybe_flush_back(self, msg: "Message"):
-        """Every time {self.flush_after}s messages have been written to the sink, write this info back into kafka
+    def _flush_back(self):
+        """Periodically, when some messages have been written to the sink, write this info back into kafka
 
-        TODO: Ensure flush also when there is a period of empty/no messages after some timeout
+        This is called sometimes when self.processed or self.consecutive_empty_polls are changed, depending on
+        the respective config settings (flush_after and flush_after_consecutive_empty_polls). See their properties.
         """
-        if self.processed % self.flush_after == 0:
-            self._consumer.commit(message=msg, asynchronous=False)  # Blocking commit!
+        self._consumer.commit(message=self.current_message, asynchronous=False)  # Blocking commit!
 
     def _handle_response(self, msg: "Message") -> None:
         """Handles errors of the raw message and then relays the message to `self._handle_message_internal()`"""
         # Both of those cases are simple "we have no further messages available" messages
         # EOF is returned the first time we hit the EOF, from then on we get None"s afer the poll()"s timeout runs out
         if msg is None or (msg.error() and msg.error().code() == KafkaError._PARTITION_EOF):
+            self.consecutive_empty_polls += 1
             self._run_callback(self.on_empty_poll)
         elif msg.error():
+            self.status_message = "Fatal Error from Kafka:\n" + msg.error()
             self.status = Status.CRASHED
-            print("FATAL::", msg.error())
         else:
-            self._handle_message_internal(msg)
+            self.current_message = msg
+            self._handle_message_internal()
 
     # internal utility functions
     def _run_callback(self, callback: Callback, *args: List[Any], **kwargs: Dict[Any, Any]) -> None:
