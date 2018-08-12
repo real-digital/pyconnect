@@ -1,4 +1,5 @@
-
+VERSION := 0.0.1
+GROUP := None
 
 install-dev-env:
 	sudo apt-get install docker docker-compose kafkacat -y
@@ -19,9 +20,16 @@ consume-%:
 list-topics:
 	kafkacat -b localhost:9092 -L
 
-GROUP := None
-
 check-offsets:
 	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --offsets --verbose
 	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --state --verbose
 	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --members --verbose
+
+publish-test:
+	python setup.py sdist
+	twine register dist/pyconnect-${VERSION}.tar.gz -r testpypi
+	twine upload dist/* -r testpypi
+
+publish: publish-test
+	twine register dist/pyconnect-${VERSION}.tar.gz
+	twine upload dist/*
