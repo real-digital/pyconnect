@@ -1,7 +1,8 @@
-from .pyconnectsink import PyConnectSink, Status, Callback
-from typing import TYPE_CHECKING, Dict, Any, Callable, Optional
 import json
 from math import inf
+from typing import TYPE_CHECKING, Dict, Any, Callable
+
+from pyconnect.pyconnectsink import PyConnectSink
 
 if TYPE_CHECKING:
     from confluent_kafka import Message

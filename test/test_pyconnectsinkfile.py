@@ -1,9 +1,10 @@
-from pyconnect.pyconnectsinkfile import PyConnectSinkFile
+import pytest
+
 from pyconnect.pyconnectsink import Status
+from test.pyconnectsinkfile import PyConnectSinkFile
 from test.test_kafka_api import produce_avro_from_file
 from .message_utils import make_rand_text, write_sample_data, compare_file_with_file, DEFAULT_SCHEMA_REGISTRY, \
     DEFAULT_BROKER
-import pytest
 
 
 def merge_files(all_files, outfile):
@@ -28,7 +29,6 @@ def get_default_conf(test_name, connector_out_filename):
 SAMPLE_AMOUNT = 10
 
 
-@pytest.mark.skip()
 def test_csink_simple():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
@@ -53,7 +53,6 @@ def test_csink_simple():
     compare_file_with_file(connector_out_filename, test_name)
 
 
-@pytest.mark.skip()
 def test_csink_stop_and_restart():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
@@ -74,7 +73,7 @@ def test_csink_stop_and_restart():
 
     compare_file_with_file(connector_out_filename, test_name)
 
-@pytest.mark.skip()
+
 def test_csink_no_rerun():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
@@ -92,7 +91,7 @@ def test_csink_no_rerun():
     with pytest.raises(RuntimeError):
         pc.run()
 
-@pytest.mark.skip()
+
 def test_csink_reach_end_and_restart():
     test_name = "test_" + make_rand_text(10)
     second_test_name = "second_" + test_name
@@ -120,7 +119,6 @@ def test_csink_reach_end_and_restart():
     compare_file_with_file(connector_out_filename, merged_filename)
 
 
-@pytest.mark.skip()
 def test_csink_reach_end_recreate_and_restart():
     test_name = "test_" + make_rand_text(10)
     second_test_name = "second_" + test_name
@@ -146,14 +144,14 @@ def test_csink_reach_end_recreate_and_restart():
     merge_files([test_name, second_test_name], merged_filename)
     compare_file_with_file(connector_out_filename, merged_filename)
 
-@pytest.mark.skip()
+
 def test_csink_fail_before_write_to_sink_then_restart():
     test_name = "test_" + make_rand_text(10)
     connector_out_filename = "sink_" + test_name
 
     sink_conf = {
         **get_default_conf(test_name, connector_out_filename),
-        "fail_before_counter": 8,
+        "fail_before_counter": SAMPLE_AMOUNT / 2 + 1,
         "on_empty_poll": lambda x: Status.STOPPED
     }
     pc = PyConnectSinkFile(**sink_conf)
@@ -166,6 +164,7 @@ def test_csink_fail_before_write_to_sink_then_restart():
     pc.run()
 
     compare_file_with_file(test_name, connector_out_filename)
+
 
 def test_csink_fail_after_write_to_sink_then_restart():
     test_name = "test_" + make_rand_text(10)
@@ -173,7 +172,7 @@ def test_csink_fail_after_write_to_sink_then_restart():
 
     sink_conf = {
         **get_default_conf(test_name, connector_out_filename),
-        "fail_after_counter": 8,
+        "fail_after_counter": SAMPLE_AMOUNT / 2 + 1,
         "on_empty_poll": lambda x: Status.STOPPED
     }
     pc = PyConnectSinkFile(**sink_conf)
@@ -185,4 +184,7 @@ def test_csink_fail_after_write_to_sink_then_restart():
     pc = PyConnectSinkFile(**sink_conf)
     pc.run()
 
-    compare_file_with_file(test_name, connector_out_filename)
+    # This should fail!
+    # The sink should have once record twice since it doesn't use idempotent messages
+    with pytest.raises(AssertionError):
+        compare_file_with_file(test_name, connector_out_filename)
