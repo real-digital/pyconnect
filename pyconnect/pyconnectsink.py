@@ -17,10 +17,6 @@ class Status(Enum):
     CRASHED = 3
 
 
-def noop(*args, **kwargs):
-    pass
-
-
 # Type definitions
 Callback = Callable[..., Optional[Status]]
 
@@ -69,15 +65,11 @@ class PyConnectSink(metaclass=ABCMeta):
 
         # TODO make sure this is a valid topic name
         self.offset_topic_name = config.get("offset_topic_name", f"_pyconnect_offsets")
-        self.on_message_handled: Callable = config.get("on_message_handled", noop)
-        self.on_empty_poll: Callable = config.get("on_empty_poll", noop)
         self.poll_timeout: int = config.get("poll_timeout", 0.5)
         self.consumer_options: Dict[str, str] = config.get("consumer_options", {})
 
         self.status: Status = Status.NOT_YET_RUNNING
         self.processed: int = 0
-        self.current_consumed_offset = None
-        self.current_produced_offset = None
 
         self._consumer: AvroConsumer = self._make_consumer()
 
@@ -95,6 +87,14 @@ class PyConnectSink(metaclass=ABCMeta):
         while self.status == Status.RUNNING:
             msg = self._consumer.poll(self.poll_timeout)
             self._handle_response(msg)
+
+    # Optional hooks
+
+    def on_message_handled(self, msg):
+        pass
+
+    def on_empty_poll(self):
+        pass
 
     # internal functions with business logic
 
@@ -115,12 +115,10 @@ class PyConnectSink(metaclass=ABCMeta):
         return consumer
 
     def _handle_message_internal(self, msg: "Message") -> None:
-        self.current_consumed_offset = msg.offset()
         self.handle_message(msg)
         self.processed += 1
         if self.processed % self.flush_after == 0:
             self._flush_back(msg)
-            self.current_produced_offset = msg.offset()
         self._run_callback(self.on_message_handled)
 
     def _flush_back(self, msg: "Message"):
