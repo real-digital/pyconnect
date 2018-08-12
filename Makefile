@@ -27,9 +27,7 @@ check-offsets:
 
 publish-test:
 	python setup.py sdist
-	twine register dist/pyconnect-${VERSION}.tar.gz -r testpypi
 	twine upload dist/* -r testpypi
 
 publish: publish-test
-	twine register dist/pyconnect-${VERSION}.tar.gz
 	twine upload dist/*
