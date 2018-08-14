@@ -1,0 +1,7 @@
+# __start_pyconnect__
+# do not edit this part
+127.0.0.1 broker
+127.0.0.1 zookeeper
+127.0.0.1 schema-registry
+127.0.0.1 rest-proxy
+# __end_pyconnect__

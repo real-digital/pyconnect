@@ -1,29 +1,52 @@
 VERSION := 0.0.2
 GROUP := None
+SHELL = /bin/bash
 
-install-dev-env:
-	sudo apt-get install docker docker-compose kafkacat -y
-	pip install -r requirements.txt
+install-system-packages:
+	sudo apt-get install docker docker-compose kafkacat python-virtualenv python3.7 -y
+
+install-virtualenv:
+	[[ -d .venv ]] || virtualenv --python=3.7 ./.venv
+	./.venv/bin/python -m pip install -r requirements.txt
+
+install-hosts:
+	[[ -n "`cat /etc/hosts | grep __start_pyconnect__`" ]] || \
+	(cat ./hosts.template | sudo tee -a /etc/hosts)
+
+uninstall-hosts:
+	sudo sed -i /__start_pyconnect__/,/__stop_pyconnect__/d /etc/hosts
+
+
+install-dev-env: install-system-packages install-virtualenv install-hosts
 
 reset-cluster:
 	sudo docker-compose -f test/testenv-docker-compose.yml rm -f
 
 boot-cluster: reset-cluster
-	sudo docker-compose -f test/testenv-docker-compose.yml up --force-recreate
+	@( \
+	  (curl -s "http://rest-proxy:8082/topics" >/dev/null) && \
+	  (echo "Cluster already running.") \
+	) \
+	  || \
+	( \
+	  (echo "Starting Cluster") && \
+	  (sudo docker-compose -f test/testenv-docker-compose.yml up --force-recreate -d) && \
+	  (until (curl -s "http://rest-proxy:8082/topics" >/dev/null); do sleep 0.1s; done) \
+	)
 
 run-tests: boot-cluster
-	pytest
+	.venv/bin/python -m pytest
 
-consume-%:
-	kafkacat -b localhost:9092 -t $^
+consume-%: boot-cluster
+	kafkacat -b broker:9092 -t $*
 
-list-topics:
-	kafkacat -b localhost:9092 -L
+list-topics: boot-cluster
+	kafkacat -b broker:9092 -L
 
-check-offsets:
-	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --offsets --verbose
-	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --state --verbose
-	../confluent/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group $(GROUP) --members --verbose
+check-offsets: boot-cluster
+	../confluent/bin/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --offsets --verbose
+	../confluent/bin/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --state --verbose
+	../confluent/bin/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
 
 publish-test:
 	python setup.py sdist

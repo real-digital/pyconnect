@@ -4,8 +4,8 @@ import json
 from itertools import zip_longest
 
 TIMEOUT = 1.0
-DEFAULT_BROKER = "localhost"
-DEFAULT_SCHEMA_REGISTRY = 'http://127.0.0.1:8081'
+DEFAULT_BROKER = "broker"
+DEFAULT_SCHEMA_REGISTRY = 'http://schema-registry:8081'
 _BASE_CONF = {"bootstrap.servers": DEFAULT_BROKER}
 
 
@@ -33,7 +33,7 @@ def get_consumer_conf():
 
 
 def get_avro_consumer_conf():
-    return {'schema.registry.url': 'http://127.0.0.1:8081', **get_consumer_conf()}
+    return {'schema.registry.url': DEFAULT_SCHEMA_REGISTRY, **get_consumer_conf()}
 
 
 def create_sample_data(sample_size=1000):
