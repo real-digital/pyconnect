@@ -202,6 +202,7 @@ class PyConnectSink(metaclass=ABCMeta):
             self.status_message = "Fatal Error from Kafka:\n" + msg.error()
             self.status = Status.CRASHED
         else:
+            self.consecutive_empty_polls = 0
             self.current_message = msg
             self._handle_message_internal()
 
