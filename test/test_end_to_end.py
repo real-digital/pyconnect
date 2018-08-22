@@ -18,7 +18,8 @@ from pyconnect.config import SinkConfig
 from pyconnect.pyconnectsink import PyConnectSink, Status
 
 
-THISDIR = os.path.dirname(__file__)
+THISDIR = os.path.abspath(os.path.dirname(__file__))
+CLI_DIR = os.path.join(THISDIR, 'kafka', 'bin')
 
 
 def rand_text(textlen):
@@ -57,29 +58,42 @@ def admin_client(cluster_hosts: Dict[str, str]) -> AdminClient:
 @pytest.fixture(
     params=[1, 2, 4],
     ids=['num_partitions=1', 'num_partitions=2', 'num_partitions=4'])
-def topic(request, admin_client: AdminClient):
+def topic(request, cluster_hosts: Dict[str, str], admin_client: AdminClient):
     topic_id = rand_text(5)
     partitions = request.param
-    admin_client.create_topics([
-        NewTopic(topic=topic_id, num_partitions=partitions)
+    # admin_client.create_topics([
+    #     NewTopic(topic=topic_id, num_partitions=partitions)
+    # ])
+    subprocess.call([
+        os.path.join(CLI_DIR, 'kafka-topics.sh'),
+        '--zookeeper', cluster_hosts['zookeeper'],
+        '--create', '--topic', topic_id,
+        '--partitions', str(partitions),
+        '--replication-factor', '1'
     ])
-    return (topic_id, partitions)
+    yield (topic_id, partitions)
+
+    subprocess.call([
+        os.path.join(CLI_DIR, 'kafka-topics.sh'),
+        '--zookeeper', cluster_hosts['zookeeper'],
+        '--describe', '--topic', topic_id
+    ])
 
 
 @pytest.fixture
 def sink_config(cluster_hosts, topic):
     topic_id, partitions = topic
+    group_id = topic_id + '_sink_group_id'
     config = SinkConfig(
             bootstrap_servers=cluster_hosts['broker'],
             schema_registry=cluster_hosts['schema-registry'],
             flush_interval=1,
-            group_id=topic_id + '_sink_group_id',
+            group_id=group_id,
             offset_topic=topic_id + '_sink_group_offsets',
             poll_timeout=2,
             topics=topic_id
     )
-    pprint(config)
-    return config
+    yield config
 
 
 @pytest.fixture
@@ -104,7 +118,8 @@ def plain_avro_producer(cluster_hosts, topic):
 
 
 @pytest.fixture
-def produced_messages(plain_avro_producer):
+def produced_messages(plain_avro_producer, topic):
+    topic_id, partitions = topic
     messages = [
             (rand_text(8), {'a': rand_text(64), 'b': random.randint(0, 1000)})
             for _ in range(15)
@@ -114,16 +129,24 @@ def produced_messages(plain_avro_producer):
     value_schema = confluent_avro.loads(json.dumps(
             create_schema_from_record('value', messages[0][1])))
 
-    for key, value in messages:
+    for i, (key, value) in enumerate(messages):
+        partition = i % partitions
         plain_avro_producer.produce(
             key=key, value=value,
-            key_schema=key_schema, value_schema=value_schema)
+            key_schema=key_schema, value_schema=value_schema,
+            partition=partition)
 
     plain_avro_producer.flush()
 
     yield messages
 
-    subprocess.call([])
+
+def message_repr(msg: Message):
+    return (
+        f'Message(key={msg.key()!r}, value={msg.value()!r}, '
+        f'topic={msg.topic()!r}, partition={msg.partition()!r}, '
+        f'error={msg.error()!r})'
+    )
 
 
 class PyConnectTestSink(PyConnectSink):
@@ -135,11 +158,26 @@ class PyConnectTestSink(PyConnectSink):
         self.forced_status_after_run = None
         self.run_counter = 0
         self.max_runs = 20
-        self.flush_interval = 1
+        self.flush_interval = 5
         super().__init__(sink_config)
 
     def on_message_received(self, msg: Message) -> None:
+        print(f'Message received: {message_repr(msg)}')
         self.message_buffer.append((msg.key(), msg.value()))
+
+    def _check_status(self):
+        print('Kafka consumer group status:')
+        subprocess.call([
+            os.path.join(CLI_DIR, 'kafka-consumer-groups.sh'),
+            '--bootstrap-server', self.config.bootstrap_servers[0],
+            '--describe', '--group', self.config.group_id,
+            '--offsets', '--verbose'
+        ])
+
+    def on_startup(self):
+        print('######## STARUP #########')
+        print(f'Config: {self.config}')
+        self._check_status()
 
     def need_flush(self):
         return len(self.message_buffer) == self.flush_interval
@@ -163,8 +201,18 @@ class PyConnectTestSink(PyConnectSink):
             self._status = new_status
 
     def on_flush(self) -> None:
+        print('Flushing messages:')
+        pprint(self.message_buffer)
         self.flushed_messages.extend(self.message_buffer)
         self.message_buffer.clear()
+
+    def on_shutdown(self) -> None:
+        print('######## SHUTDOWN #########')
+        self._check_status()
+        if self.status == Status.CRASHED and self.status_info is not None:
+            raise self.status_info
+        print('Flushed messages:')
+        pprint(self.flushed_messages)
 
 
 @pytest.mark.e2e
@@ -186,25 +234,19 @@ def test_message_consumption(produced_messages, connect_sink_factory):
 def test_continue_after_crash(produced_messages, connect_sink_factory):
     connect_sink = connect_sink_factory()
     connect_sink.forced_status_after_run = [None]*7 + [Status.CRASHED]
-    connect_sink.flush_interval = 5
 
     connect_sink.run()
     flushed_messages = connect_sink.flushed_messages
-    print('#########')
-    print('first instance flushed the following messages')
-    print('#########')
     pprint(connect_sink.flushed_messages)
 
     connect_sink = connect_sink_factory()
-    connect_sink.flush_interval = 5
     connect_sink.on_no_message_received = mock.Mock(
         side_effect=[None]*3 + [Status.STOPPED])
 
+    connect_sink.run()
+
     flushed_messages.extend(connect_sink.flushed_messages)
 
-    print('#########')
-    print('second instance flushed the following messages:')
-    print('#########')
     pprint(connect_sink.flushed_messages)
 
     for message in produced_messages:
