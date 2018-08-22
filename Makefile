@@ -53,9 +53,9 @@ list-topics: boot-cluster
 	kafkacat -b broker:9092 -L
 
 check-offsets: boot-cluster
-	../kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --offsets --verbose
-	../kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --state --verbose
-	../kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
+	test/kafka_cli/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --offsets --verbose
+	test/kafka_cli/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --state --verbose
+	test/kafka_cli/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
 
 publish-test:
 	python setup.py sdist
