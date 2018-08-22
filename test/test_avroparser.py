@@ -113,19 +113,27 @@ schema_optional = {
     ]
 }
 
+
 def test_avro_schema_generation():
     # Sanity check - this should not throw
     loads(json.dumps(schema))
-    generated = create_schema_from_record("all_field", data, namespace="ba.nanas")
-    _generated = json.dumps(generated, sort_keys=True)
-    _schema = json.dumps(schema, sort_keys=True)
-    assert _schema == _generated, f"Generated schema does not match!"
+    generated = create_schema_from_record(
+        "all_field", data, namespace="ba.nanas")
+    assert schema == generated, f"Generated schema does not match!"
+
+
+def test_schema_generation_from_primitive():
+    record = 'asdf'
+    _generated = create_schema_from_record('key', record)
+    _schema = {'name': 'key', 'type': 'string'}
+
+    assert _generated == _schema
 
 
 def test_avro_schema_generation_optional():
     # Sanity check - this should not throw
     loads(json.dumps(schema_optional))
-    generated = create_schema_from_record("all_field", data, namespace="ba.nanas", optional_primitives=True)
-    _generated = json.dumps(generated, sort_keys=True)
-    _schema = json.dumps(schema_optional, sort_keys=True)
-    assert _schema == _generated, f"Generated schema does not match!"
+    generated = create_schema_from_record(
+        "all_field", data, namespace="ba.nanas", optional_primitives=True)
+
+    assert schema_optional == generated, f"Generated schema does not match!"

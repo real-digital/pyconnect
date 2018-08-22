@@ -59,12 +59,15 @@ def create_schema_from_record(name: str, record: RecordDict, namespace: str = No
                               optional_primitives: bool = False) -> RecordDict:
     # TODO also allow a way to make each primitive type optional
 
-    # for top-level elements, the name might be either "key" or "value"
-    template = {
-        "name": name,
-        "type": "record",
-        **to_avro_fields(record, optional_primitives)
-    }
+    if isinstance(record, dict):
+        # for top-level elements, the name might be either "key" or "value"
+        template = {
+            "name": name,
+            "type": "record",
+            **to_avro_fields(record, optional_primitives)
+        }
+    else:
+        template = _parse_avro_field(name, record, optional_primitives)
 
     # This is optional - should be specified for root-level schemata but not necessary for recursive records
     if namespace is not None:
