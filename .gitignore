@@ -107,3 +107,6 @@ venv.bak/
 
 # vim swap files
 *.swp
+
+# local scratch files
+scratch/
