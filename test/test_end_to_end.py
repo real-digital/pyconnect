@@ -18,6 +18,9 @@ from pyconnect.config import SinkConfig
 from pyconnect.pyconnectsink import PyConnectSink, Status
 
 
+THISDIR = os.path.dirname(__file__)
+
+
 def rand_text(textlen):
     return ''.join(random.choices(string.ascii_uppercase, k=textlen))
 
@@ -29,7 +32,7 @@ def cluster_hosts():
         stdout=subprocess.DEVNULL)
     if completed.returncode != 0:
         pytest.fail('Kafka Cluster is not running!')
-    with open(os.path.join(os.path.dirname(__file__),
+    with open(os.path.join(THISDIR,
                            'testenv-docker-compose.yml'), 'r') as infile:
         yml_config = yaml.load(infile)
 
@@ -118,7 +121,9 @@ def produced_messages(plain_avro_producer):
 
     plain_avro_producer.flush()
 
-    return messages
+    yield messages
+
+    subprocess.call([])
 
 
 class PyConnectTestSink(PyConnectSink):
