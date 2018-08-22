@@ -4,12 +4,11 @@ setup(
     name='pyconnect',
     version='0.0.2',
     packages=['pyconnect'],
+
+    # minimal requirements to run pyconnect
     install_requires=[
-        "confluent-kafka==0.11.5",
-        "avro-python3==1.8.2",
-        "fastavro==0.21.4",
-        "pytest==3.7.1",
-        "requests==2.19.1"
+        "confluent-kafka>=0.11.5",
+        "pyaml>=3.13"
     ],
     url='https://github.com/MrTrustworthy/pyconnect',
     license='MIT',
