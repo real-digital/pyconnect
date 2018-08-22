@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Dict, Any, List, Callable, Optional
+from typing import Tuple, Dict, Any, List, Callable, Optional
 
 from pyconnect.config import SinkConfig
 
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaException
-from confluent_kafka import Message
+from confluent_kafka import Message, TopicPartition, OFFSET_STORED, Consumer
 
 import logging
 logger = logging.getLogger(__name__)
@@ -87,6 +87,7 @@ class PyConnectSink(metaclass=ABCMeta):
 
         self._consumer: AvroConsumer = self._make_consumer()
         self.last_message: Message = None
+        self._offsets: Dict[Tuple[str, int], TopicPartition] = {}
 
     @property
     def is_running(self):
@@ -139,6 +140,7 @@ class PyConnectSink(metaclass=ABCMeta):
     # Hook wrappers
 
     def _on_message_received(self, msg: Message):
+        self._update_offset_from_message(msg)
         self._safe_call_and_set_status(self.on_message_received, msg)
 
     def _on_flush(self):
@@ -161,6 +163,18 @@ class PyConnectSink(metaclass=ABCMeta):
         self._safe_call_and_set_status(self.on_no_message_received)
 
     # internal functions with business logic
+
+    def _update_offset_from_message(self, msg: Message):
+        topic_partition = self._msg_to_topic_partition(msg)
+        key = (topic_partition.topic, topic_partition.partition)
+        self._offsets[key] = topic_partition
+
+    def _msg_to_topic_partition(self, msg: Message) -> TopicPartition:
+        # TopicPartition may contain an offset so it can be used with
+        # consumer.commit, we need to add 1 so the consumer will continue
+        # on the NEXT message when it resumes
+        return TopicPartition(msg.topic(), msg.partition(), msg.offset() + 1)
+
     def _before_run_loop(self):
         pass
         if not self.status == Status.NOT_YET_RUNNING:
@@ -220,7 +234,8 @@ class PyConnectSink(metaclass=ABCMeta):
             self._on_flush()
             # only commit if status after flushing is still running
             if self.is_running:
-                self._consumer.commit()
+                offsets = list(self._offsets.values())
+                self._consumer.commit(offsets=offsets)
 
     def _safe_call_and_set_status(self, callback: Callable,
                                   *args: List[Any], **kwargs: Dict[Any, Any]):
@@ -260,5 +275,4 @@ class PyConnectSink(metaclass=ABCMeta):
         }
         consumer = AvroConsumer(config)
         consumer.subscribe(self.config.topics)
-        # consumer.resume()
         return consumer
