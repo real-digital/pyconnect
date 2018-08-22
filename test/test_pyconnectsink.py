@@ -71,6 +71,9 @@ def message_factory():
         def message_factory_():
             msg = Message()
             msg.error.return_value = None
+            msg.topic.return_value = 'testtopic'
+            msg.partition.return_value = 1
+            msg.offset.return_value = 1
             return msg
         yield message_factory_
 
@@ -266,3 +269,20 @@ def test_no_flush_if_not_needed(run_once_sink):
     run_once_sink.run()
 
     assert not run_once_sink.on_flush.called
+
+
+def test_flush_after_run(message_factory):
+    # setup
+    connect_sink = PyConnectTestSink()
+    connect_sink._consumer.poll.side_effect = [message_factory()]*5 + [None]
+    connect_sink.on_no_message_received = mock.Mock(
+        return_value=Status.STOPPED)
+    connect_sink.on_flush = mock.Mock(return_value=None)
+    connect_sink.need_flush = mock.Mock(return_value=False)
+
+    # perform
+    connect_sink.run()
+
+    # test
+    connect_sink._consumer.commit.assert_called_once()
+    connect_sink.on_flush.assert_called_once()
