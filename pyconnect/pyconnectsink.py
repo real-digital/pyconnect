@@ -6,7 +6,7 @@ from pyconnect.config import SinkConfig
 
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaException
-from confluent_kafka import Message, TopicPartition, OFFSET_STORED, Consumer
+from confluent_kafka import Message, TopicPartition
 
 import logging
 logger = logging.getLogger(__name__)
@@ -137,6 +137,14 @@ class PyConnectSink(metaclass=ABCMeta):
     def need_flush(self):
         return True
 
+    def on_final_flush(self):
+        status = self.on_flush()
+        # maybe on_flush() returned RUNNING
+        # return None in that case, in order not to overwrite actual status
+        if status == Status.RUNNING:
+            return None
+        return status
+
     # Hook wrappers
 
     def _on_message_received(self, msg: Message):
@@ -146,11 +154,15 @@ class PyConnectSink(metaclass=ABCMeta):
     def _on_flush(self):
         self._safe_call_and_set_status(self.on_flush)
 
+    def _on_final_flush(self):
+        self._safe_call_and_set_status(self.on_final_flush)
+
     def _on_crash(self):
         self._safe_call_and_set_status(self.on_crash)
 
     def _on_shutdown(self):
         # connector cannot recover during on_shutdown!
+        # so no safe call needed
         self.on_shutdown()
 
     def _on_startup(self):
@@ -176,7 +188,6 @@ class PyConnectSink(metaclass=ABCMeta):
         return TopicPartition(msg.topic(), msg.partition(), msg.offset() + 1)
 
     def _before_run_loop(self):
-        pass
         if not self.status == Status.NOT_YET_RUNNING:
             raise RuntimeError('Can not re-start a failed/stopped connector, '
                                'need to re-create a Connect instance')
@@ -216,7 +227,13 @@ class PyConnectSink(metaclass=ABCMeta):
 
     def _after_run_loop(self):
         try:
-            self.on_shutdown()
+            if self._status == Status.STOPPED:
+                self._on_final_flush()
+
+                if self._status == Status.STOPPED:
+                    self._commit()
+
+            self._on_shutdown()
         finally:
             self._consumer.close()
 
@@ -234,16 +251,20 @@ class PyConnectSink(metaclass=ABCMeta):
             self._on_flush()
             # only commit if status after flushing is still running
             if self.is_running:
-                offsets = list(self._offsets.values())
-                self._consumer.commit(offsets=offsets)
+                self._commit()
+
+    def _commit(self) -> None:
+        offsets = list(self._offsets.values())
+        self._consumer.commit(offsets=offsets)
 
     def _safe_call_and_set_status(self, callback: Callable,
-                                  *args: List[Any], **kwargs: Dict[Any, Any]):
+                                  *args: List[Any],
+                                  **kwargs: Dict[Any, Any]) -> None:
         try:
             new_status = callback(*args, **kwargs)
         except Exception as e:
-            logger.exception(f'Callback {callback} raised an Exception!')
-            self._status = Status.CRASHED
+            self._handle_general_exception(e)
+            return
 
         if new_status is None:
             return

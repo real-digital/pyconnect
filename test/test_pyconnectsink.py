@@ -255,6 +255,9 @@ def test_crash_handler_to_the_rescue(message_factory):
 
 def test_flush_if_needed(run_once_sink):
     run_once_sink.need_flush = mock.Mock(return_value=True)
+
+    # make sure on_final_flush doesn't call on_flush
+    run_once_sink.on_final_flush = mock.Mock(return_value=None)
     run_once_sink.on_flush = mock.Mock(return_value=None)
 
     run_once_sink.run()
@@ -264,11 +267,55 @@ def test_flush_if_needed(run_once_sink):
 
 def test_no_flush_if_not_needed(run_once_sink):
     run_once_sink.need_flush = mock.Mock(return_value=False)
+
+    # make sure on_final_flush doesn't call on_flush
+    run_once_sink.on_final_flush = mock.Mock(return_value=None)
     run_once_sink.on_flush = mock.Mock(return_value=None)
 
     run_once_sink.run()
 
     assert not run_once_sink.on_flush.called
+
+
+def test_on_final_flush_called(run_once_sink):
+    # setup
+    run_once_sink.on_final_flush = mock.Mock(return_value=None)
+    # should be called even if flush_needed returns False
+    run_once_sink.need_flush = mock.Mock(return_value=False)
+
+    # perform
+    run_once_sink.run()
+
+    # test
+    run_once_sink.on_final_flush.assert_called_once()
+
+
+def test_no_commit_if_final_flush_failed_with_status(run_once_sink):
+    # setup
+    run_once_sink.on_final_flush = mock.Mock(return_value=Status.CRASHED)
+    # make sure standard flush is not called
+    run_once_sink.need_flush = mock.Mock(return_value=False)
+
+    # perform
+    run_once_sink.run()
+
+    # test
+    run_once_sink.on_final_flush.assert_called_once()
+    assert not run_once_sink._consumer.commit.called
+
+
+def test_no_commit_if_final_flush_failed_with_exception(run_once_sink):
+    # setup
+    run_once_sink.on_final_flush = mock.Mock(side_effect=[Exception()])
+    # make sure standard flush is not called
+    run_once_sink.need_flush = mock.Mock(return_value=False)
+
+    # perform
+    run_once_sink.run()
+
+    # test
+    run_once_sink.on_final_flush.assert_called_once()
+    assert not run_once_sink._consumer.commit.called
 
 
 def test_flush_after_run(message_factory):
