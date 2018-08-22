@@ -34,7 +34,16 @@ boot-cluster: reset-cluster
 	  (until (curl -s "http://rest-proxy:8082/topics" >/dev/null); do sleep 0.1s; done) \
 	)
 
-run-tests: boot-cluster
+shutdown-cluster:
+	@( \
+	  (echo "Stopping Cluster") && \
+	  (sudo docker-compose -f test/testenv-docker-compose.yml down) \
+	)
+
+run-full-tests: boot-cluster
+	.venv/bin/python -m pytest --run-e2e
+
+run-tests:
 	.venv/bin/python -m pytest
 
 consume-%: boot-cluster
@@ -44,9 +53,9 @@ list-topics: boot-cluster
 	kafkacat -b broker:9092 -L
 
 check-offsets: boot-cluster
-	../confluent/bin/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --offsets --verbose
-	../confluent/bin/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --state --verbose
-	../confluent/bin/kafka-consumer-groups --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
+	../kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --offsets --verbose
+	../kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --state --verbose
+	../kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
 
 publish-test:
 	python setup.py sdist
