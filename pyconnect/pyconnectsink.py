@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Tuple, Dict, Any, List, Callable, Optional
+from typing import Tuple, Dict, Any, Optional
 
 from pyconnect.config import SinkConfig
+from pyconnect.core import Status, BaseConnector
 
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaException
@@ -10,13 +11,6 @@ from confluent_kafka import Message, TopicPartition
 
 import logging
 logger = logging.getLogger(__name__)
-
-
-class Status(Enum):
-    NOT_YET_RUNNING = 0
-    RUNNING = 1
-    STOPPED = 2
-    CRASHED = 3
 
 
 class MessageType(Enum):
@@ -33,7 +27,7 @@ def determine_message_type(msg: Optional[Message]) -> MessageType:
     return MessageType.STANDARD
 
 
-class PyConnectSink(metaclass=ABCMeta):
+class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     """ This is the base class that all custom sink connectors need to inherit
 
     There are a row of steps that a connector goes through:
@@ -117,16 +111,14 @@ class PyConnectSink(metaclass=ABCMeta):
         self._run_loop()
         self._after_run_loop()
 
+    def close(self):
+        try:
+            self._consumer.close()
+        except RuntimeError:
+            # closing a closed consumer should not raise anything
+            pass
+
     # Optional hooks
-
-    def on_crash(self):
-        pass
-
-    def on_shutdown(self):
-        pass
-
-    def on_startup(self):
-        pass
 
     def on_error_received(self, msg):
         pass
@@ -157,17 +149,6 @@ class PyConnectSink(metaclass=ABCMeta):
     def _on_final_flush(self):
         self._safe_call_and_set_status(self.on_final_flush)
 
-    def _on_crash(self):
-        self._safe_call_and_set_status(self.on_crash)
-
-    def _on_shutdown(self):
-        # connector cannot recover during on_shutdown!
-        # so no safe call needed
-        self.on_shutdown()
-
-    def _on_startup(self):
-        self._safe_call_and_set_status(self.on_startup)
-
     def _on_error_received(self, msg: Message):
         self._safe_call_and_set_status(self.on_error_received, msg)
 
@@ -187,19 +168,6 @@ class PyConnectSink(metaclass=ABCMeta):
         # on the NEXT message when it resumes
         return TopicPartition(msg.topic(), msg.partition(), msg.offset() + 1)
 
-    def _before_run_loop(self):
-        if not self.status == Status.NOT_YET_RUNNING:
-            raise RuntimeError('Can not re-start a failed/stopped connector, '
-                               'need to re-create a Connect instance')
-
-        self._status = Status.RUNNING
-
-        self._on_startup()
-
-    def _run_loop(self):
-        while self.is_running:
-            self._run_once()
-
     def _run_once(self) -> None:
         try:
             self.last_message = None
@@ -215,16 +183,6 @@ class PyConnectSink(metaclass=ABCMeta):
         if self.status == Status.CRASHED:
             self._on_crash()
 
-    def _handle_kafka_exception(self, e: KafkaException) -> None:
-        logger.exception('Kafka internal exception!')
-        self._status = Status.CRASHED
-        self._status_info = e
-
-    def _handle_general_exception(self, e: Exception):
-        logger.exception('Connector crashed!')
-        self._status = Status.CRASHED
-        self._status_info = e
-
     def _after_run_loop(self):
         try:
             if self._status == Status.STOPPED:
@@ -235,7 +193,7 @@ class PyConnectSink(metaclass=ABCMeta):
 
             self._on_shutdown()
         finally:
-            self._consumer.close()
+            self.close()
 
     def _call_right_handler_for_message(self, msg: Message) -> None:
         msg_type = determine_message_type(msg)
@@ -256,23 +214,6 @@ class PyConnectSink(metaclass=ABCMeta):
     def _commit(self) -> None:
         offsets = list(self._offsets.values())
         self._consumer.commit(offsets=offsets)
-
-    def _safe_call_and_set_status(self, callback: Callable,
-                                  *args: List[Any],
-                                  **kwargs: Dict[Any, Any]) -> None:
-        try:
-            new_status = callback(*args, **kwargs)
-        except Exception as e:
-            self._handle_general_exception(e)
-            return
-
-        if new_status is None:
-            return
-        elif isinstance(new_status, Status):
-            self._status = new_status
-        else:
-            raise RuntimeError(f'Callback {callback} needs to return Status '
-                               f'but returned {type(new_status)}')
 
     def _make_consumer(self) -> AvroConsumer:
         config = {
