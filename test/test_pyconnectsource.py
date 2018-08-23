@@ -58,8 +58,8 @@ def test_on_eof_called(source_factory):
 
 def test_message_sent(source_factory):
     source = source_factory()
-    source.records = range(100)
+    source.records = list(zip(range(10), range(10)))
 
     source.run()
-
-    source.on_eof.assert_has_calls(map(mock.call, source.records))
+    calls = [mock.call(key=key, value=value) for key, value in source.records]
+    source._producer.produce.assert_has_calls(calls)
