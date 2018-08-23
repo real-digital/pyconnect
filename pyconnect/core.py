@@ -22,6 +22,18 @@ class BaseConnector(metaclass=ABCMeta):
     def __init__(self):
         self._status = Status.NOT_YET_RUNNING
 
+    @property
+    def is_running(self):
+        return self._status == Status.RUNNING
+
+    @property
+    def status_info(self):
+        return self._status_info
+
+    @property
+    def status(self):
+        return self._status
+
     def run(self):
         self._before_run_loop()
         self._run_loop()
@@ -33,7 +45,7 @@ class BaseConnector(metaclass=ABCMeta):
             self._run_once()
 
     def _before_run_loop(self):
-        if not self.status == Status.NOT_YET_RUNNING:
+        if not self._status == Status.NOT_YET_RUNNING:
             raise RuntimeError('Can not re-start a failed/stopped connector, '
                                'need to re-create a Connect instance')
 
@@ -67,6 +79,10 @@ class BaseConnector(metaclass=ABCMeta):
         else:
             raise RuntimeError(f'Callback {callback} needs to return Status '
                                f'but returned {type(new_status)}')
+
+    @abstractmethod
+    def close(self) -> None:
+        raise NotImplementedError()
 
     @abstractmethod
     def _run_once(self) -> None:

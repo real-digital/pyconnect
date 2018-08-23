@@ -83,18 +83,6 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         self.last_message: Message = None
         self._offsets: Dict[Tuple[str, int], TopicPartition] = {}
 
-    @property
-    def is_running(self):
-        return self._status == Status.RUNNING
-
-    @property
-    def status_info(self):
-        return self._status_info
-
-    @property
-    def status(self):
-        return self._status
-
     # public functions
     @abstractmethod
     def on_flush(self) -> None:
