@@ -82,7 +82,6 @@ def sink_config(cluster_hosts, topic):
             schema_registry=cluster_hosts['schema-registry'],
             flush_interval=1,
             group_id=group_id,
-            offset_topic=topic_id + '_sink_group_offsets',
             poll_timeout=2,
             topics=topic_id
     )

@@ -18,7 +18,6 @@ class PyConnectTestSink(PyConnectSink):
                 schema_registry='localhost',
                 flush_interval=1,
                 group_id='group_id',
-                offset_topic='group_offsets',
                 poll_timeout=1,
                 topics=''
         )

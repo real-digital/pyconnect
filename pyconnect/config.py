@@ -235,8 +235,6 @@ class SinkConfig(BaseConfig):
     topics: List[str] = dataclasses.field(metadata={
         'parser': csv_line_reader()})
 
-    offset_topic: str = '_pyconnect_offsets'
-
     poll_timeout: int = dataclasses.field(default=60, metadata={
         'parser': int})
 
@@ -247,5 +245,6 @@ class SinkConfig(BaseConfig):
     ]
 
 
+@dataclasses.dataclass
 class SourceConfig(BaseConfig):
-    pass
+    offset_topic: str = '_pyconnect_offsets'
