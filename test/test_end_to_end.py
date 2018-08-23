@@ -3,7 +3,6 @@ from unittest import mock
 from typing import List, Dict
 from confluent_kafka import Message
 from confluent_kafka import avro as confluent_avro
-from confluent_kafka.admin import AdminClient
 from pprint import pprint
 import subprocess
 import pytest
@@ -50,23 +49,13 @@ def cluster_hosts():
     return hosts
 
 
-@pytest.fixture
-def admin_client(cluster_hosts: Dict[str, str]) -> AdminClient:
-    admin_config = {
-        'bootstrap.servers': cluster_hosts['broker'],
-    }
-    return AdminClient(admin_config)
-
-
 @pytest.fixture(
     params=[1, 2, 4],
     ids=['num_partitions=1', 'num_partitions=2', 'num_partitions=4'])
-def topic(request, cluster_hosts: Dict[str, str], admin_client: AdminClient):
+def topic(request, cluster_hosts: Dict[str, str]):
     topic_id = rand_text(5)
     partitions = request.param
-    # admin_client.create_topics([
-    #     NewTopic(topic=topic_id, num_partitions=partitions)
-    # ])
+
     subprocess.call([
         os.path.join(CLI_DIR, 'kafka-topics.sh'),
         '--zookeeper', cluster_hosts['zookeeper'],
@@ -74,6 +63,7 @@ def topic(request, cluster_hosts: Dict[str, str], admin_client: AdminClient):
         '--partitions', str(partitions),
         '--replication-factor', '1'
     ])
+
     yield (topic_id, partitions)
 
     subprocess.call([
