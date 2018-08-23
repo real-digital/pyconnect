@@ -1,6 +1,6 @@
 from functools import partial
 from unittest import mock
-from typing import List, Dict
+from typing import List, Dict, Any
 from confluent_kafka import Message
 from confluent_kafka import avro as confluent_avro
 from pprint import pprint
@@ -117,10 +117,8 @@ def produced_messages(plain_avro_producer, topic, cluster_hosts):
             (rand_text(8), {'a': rand_text(64), 'b': random.randint(0, 1000)})
             for _ in range(15)
     ]
-    key_schema = confluent_avro.loads(json.dumps(
-            create_schema_from_record('key', messages[0][0])))
-    value_schema = confluent_avro.loads(json.dumps(
-            create_schema_from_record('value', messages[0][1])))
+    key_schema = to_schema('key', messages[0][0])
+    value_schema = to_schema('value', messages[0][1])
 
     for key, value in messages:
         plain_avro_producer.produce(
@@ -141,6 +139,11 @@ def produced_messages(plain_avro_producer, topic, cluster_hosts):
         pytest.fail('not all partitions present!')
 
     yield messages
+
+
+def to_schema(name: str, record: Any):
+    return confluent_avro.loads(json.dumps(
+        create_schema_from_record(name, record)))
 
 
 def message_repr(msg: Message):
