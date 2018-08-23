@@ -9,7 +9,7 @@ from pyconnect.core import Status
 from test.utils import ConnectTestMixin
 
 
-class PyConnectTestSource(PyConnectSource, ConnectTestMixin):
+class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
 
     def __init__(self, config: SourceConfig, records) -> None:
         super().__init__(config)
@@ -19,7 +19,7 @@ class PyConnectTestSource(PyConnectSource, ConnectTestMixin):
     def seek(self, idx: int):
         self.idx = idx
 
-    def read(self, timeout: int) -> Any:
+    def read(self) -> Any:
         try:
             record = self.records[self.idx]
         except IndexError:
@@ -40,10 +40,12 @@ def source_factory():
         flush_interval=5
     )
 
-    def source_factory_():
-        source = PyConnectTestSource(config, [])
-        source.on_eof = mock.Mock(return_value=Status.STOPPED)
-    return source_factory_
+    with mock.patch('pyconnect.pyconnectsource.AvroProducer'):
+        def source_factory_():
+            source = PyConnectTestSource(config, [])
+            source.on_eof = mock.Mock(return_value=Status.STOPPED)
+            return source
+        yield source_factory_
 
 
 def test_on_eof_called(source_factory):

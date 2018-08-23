@@ -11,23 +11,24 @@ class ConnectTestMixin():
         self.run_counter = 0
         self.max_runs = 20
 
-    def _run_once(self):
-        if self.run_counter >= self.max_runs:
-            pytest.fail('Runlimit Reached! Forgot to force stop?')
-        self.run_counter += 1
+    def _run_loop(self):
+        while self.is_running:
+            if self.run_counter >= self.max_runs:
+                pytest.fail('Runlimit Reached! Forgot to force stop?')
+            self.run_counter += 1
 
-        super()._run_once()
+            self._run_once()
 
-        if isinstance(self.forced_status_after_run, list):
-            if len(self.forced_status_after_run) > 1:
-                new_status = self.forced_status_after_run.pop(0)
+            if isinstance(self.forced_status_after_run, list):
+                if len(self.forced_status_after_run) > 1:
+                    new_status = self.forced_status_after_run.pop(0)
+                else:
+                    new_status = self.forced_status_after_run[0]
             else:
-                new_status = self.forced_status_after_run[0]
-        else:
-            new_status = self.forced_status_after_run
+                new_status = self.forced_status_after_run
 
-        if new_status is not None:
-            self._status = new_status
+            if new_status is not None:
+                self._status = new_status
 
 
 def rand_text(textlen):

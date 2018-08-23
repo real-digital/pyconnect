@@ -9,8 +9,10 @@ from confluent_kafka import Message
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka import KafkaError
 
+from test.utils import ConnectTestMixin
 
-class PyConnectTestSink(PyConnectSink):
+
+class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
 
     def __init__(self) -> None:
         conf_dict = dict(
@@ -21,31 +23,10 @@ class PyConnectTestSink(PyConnectSink):
                 poll_timeout=1,
                 topics=''
         )
-        self.forced_status_after_run = None
-        self.run_counter = 0
-        self.max_runs = 20
         super().__init__(SinkConfig(**conf_dict))  # type: ignore
 
     def on_message_received(self, msg: Message) -> None:
         pass
-
-    def _run_once(self):
-        if self.run_counter >= self.max_runs:
-            pytest.fail('Runlimit Reached! Forgot to force stop?')
-        self.run_counter += 1
-
-        super()._run_once()
-
-        if isinstance(self.forced_status_after_run, list):
-            if len(self.forced_status_after_run) > 1:
-                new_status = self.forced_status_after_run.pop(0)
-            else:
-                new_status = self.forced_status_after_run[0]
-        else:
-            new_status = self.forced_status_after_run
-
-        if new_status is not None:
-            self._status = new_status
 
     def on_flush(self) -> None:
         pass

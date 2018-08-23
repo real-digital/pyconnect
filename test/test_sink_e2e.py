@@ -21,7 +21,7 @@ THISDIR = os.path.abspath(os.path.dirname(__file__))
 CLI_DIR = os.path.join(THISDIR, 'kafka', 'bin')
 
 
-class PyConnectTestSink(PyConnectSink, ConnectTestMixin):
+class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
 
     def __init__(self, sink_config) -> None:
         self.message_buffer: List[Message] = []
