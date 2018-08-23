@@ -9,20 +9,60 @@ import pytest
 import yaml
 import json
 import os
-import random
-import string
 
 from pyconnect.avroparser import create_schema_from_record
 from pyconnect.config import SinkConfig
 from pyconnect.pyconnectsink import PyConnectSink, Status
+
+from test.utils import ConnectTestMixin, rand_text
 
 
 THISDIR = os.path.abspath(os.path.dirname(__file__))
 CLI_DIR = os.path.join(THISDIR, 'kafka', 'bin')
 
 
-def rand_text(textlen):
-    return ''.join(random.choices(string.ascii_uppercase, k=textlen))
+class PyConnectTestSink(PyConnectSink, ConnectTestMixin):
+
+    def __init__(self, sink_config) -> None:
+        self.message_buffer: List[Message] = []
+        self.flushed_messages: List[Message] = []
+        self.flush_interval = 5
+        super().__init__(sink_config)
+
+    def on_message_received(self, msg: Message) -> None:
+        print(f'Message received: {message_repr(msg)}')
+        self.message_buffer.append((msg.key(), msg.value()))
+
+    def _check_status(self):
+        print('Kafka consumer group status:')
+        subprocess.call([
+            os.path.join(CLI_DIR, 'kafka-consumer-groups.sh'),
+            '--bootstrap-server', self.config.bootstrap_servers[0],
+            '--describe', '--group', self.config.group_id,
+            '--offsets', '--verbose'
+        ])
+
+    def on_startup(self):
+        print('######## STARUP #########')
+        print(f'Config: {self.config}')
+        self._check_status()
+
+    def need_flush(self):
+        return len(self.message_buffer) == self.flush_interval
+
+    def on_flush(self) -> None:
+        print('Flushing messages:')
+        pprint(self.message_buffer)
+        self.flushed_messages.extend(self.message_buffer)
+        self.message_buffer.clear()
+
+    def on_shutdown(self) -> None:
+        print('######## SHUTDOWN #########')
+        self._check_status()
+        if self.status == Status.CRASHED and self.status_info is not None:
+            raise self.status_info
+        print('----\nFlushed messages:')
+        pprint(self.flushed_messages)
 
 
 @pytest.fixture(scope='module')
@@ -151,72 +191,6 @@ def message_repr(msg: Message):
         f'topic={msg.topic()!r}, partition={msg.partition()!r}, '
         f'offset={msg.offset()!r}, error={msg.error()!r})'
     )
-
-
-class PyConnectTestSink(PyConnectSink):
-
-    def __init__(self, sink_config) -> None:
-        self.message_buffer: List[Message] = []
-        self.flushed_messages: List[Message] = []
-        self._has_run = False
-        self.forced_status_after_run = None
-        self.run_counter = 0
-        self.max_runs = 20
-        self.flush_interval = 5
-        super().__init__(sink_config)
-
-    def on_message_received(self, msg: Message) -> None:
-        print(f'Message received: {message_repr(msg)}')
-        self.message_buffer.append((msg.key(), msg.value()))
-
-    def _check_status(self):
-        print('Kafka consumer group status:')
-        subprocess.call([
-            os.path.join(CLI_DIR, 'kafka-consumer-groups.sh'),
-            '--bootstrap-server', self.config.bootstrap_servers[0],
-            '--describe', '--group', self.config.group_id,
-            '--offsets', '--verbose'
-        ])
-
-    def on_startup(self):
-        print('######## STARUP #########')
-        print(f'Config: {self.config}')
-        self._check_status()
-
-    def need_flush(self):
-        return len(self.message_buffer) == self.flush_interval
-
-    def _run_once(self):
-        if self.run_counter >= self.max_runs:
-            pytest.fail('Runlimit Reached! Forgot to force stop?')
-        self.run_counter += 1
-
-        super()._run_once()
-
-        if isinstance(self.forced_status_after_run, list):
-            if len(self.forced_status_after_run) > 1:
-                new_status = self.forced_status_after_run.pop(0)
-            else:
-                new_status = self.forced_status_after_run[0]
-        else:
-            new_status = self.forced_status_after_run
-
-        if new_status is not None:
-            self._status = new_status
-
-    def on_flush(self) -> None:
-        print('Flushing messages:')
-        pprint(self.message_buffer)
-        self.flushed_messages.extend(self.message_buffer)
-        self.message_buffer.clear()
-
-    def on_shutdown(self) -> None:
-        print('######## SHUTDOWN #########')
-        self._check_status()
-        if self.status == Status.CRASHED and self.status_info is not None:
-            raise self.status_info
-        print('----\nFlushed messages:')
-        pprint(self.flushed_messages)
 
 
 @pytest.mark.e2e
