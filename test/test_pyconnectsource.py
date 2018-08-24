@@ -1,34 +1,14 @@
 from unittest import mock
 import pytest
-from typing import List, Any
 
 from pyconnect.config import SourceConfig
-from pyconnect.pyconnectsource import PyConnectSource
 from pyconnect.core import Status
 
-from test.utils import ConnectTestMixin
+from test.utils import PyConnectTestSource
 
+# noinspection PyUnresolvedReferences
+from test.utils import failing_callback
 
-class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
-
-    def __init__(self, config: SourceConfig, records) -> None:
-        super().__init__(config)
-        self.records: List[Any] = records
-        self.idx = 0
-
-    def seek(self, idx: int):
-        self.idx = idx
-
-    def read(self) -> Any:
-        try:
-            record = self.records[self.idx]
-        except IndexError:
-            raise StopIteration()
-        self.idx = self.get_next_index()
-        return record
-
-    def get_next_index(self):
-        return self.idx + 1
 
 
 @pytest.fixture

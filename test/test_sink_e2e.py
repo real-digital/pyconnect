@@ -1,62 +1,18 @@
 from functools import partial
 from unittest import mock
-from typing import List
-from confluent_kafka import Message
 from confluent_kafka import avro as confluent_avro
-from pprint import pprint
 import subprocess
 import pytest
 import os
 import random
 
 from pyconnect.config import SinkConfig
-from pyconnect.pyconnectsink import PyConnectSink, Status
+from pyconnect.pyconnectsink import Status
 
-from test.utils import ConnectTestMixin, rand_text, to_schema, message_repr, CLI_DIR
+from test.utils import PyConnectTestSink, rand_text, to_schema, CLI_DIR
 
-
-class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
-
-    def __init__(self, sink_config) -> None:
-        self.message_buffer: List[Message] = []
-        self.flushed_messages: List[Message] = []
-        self.flush_interval = 5
-        super().__init__(sink_config)
-
-    def on_message_received(self, msg: Message) -> None:
-        print(f'Message received: {message_repr(msg)}')
-        self.message_buffer.append((msg.key(), msg.value()))
-
-    def _check_status(self):
-        print('Kafka consumer group status:')
-        subprocess.call([
-            os.path.join(CLI_DIR, 'kafka-consumer-groups.sh'),
-            '--bootstrap-server', self.config.bootstrap_servers[0],
-            '--describe', '--group', self.config.group_id,
-            '--offsets', '--verbose'
-        ])
-
-    def on_startup(self):
-        print('######## STARUP #########')
-        print(f'Config: {self.config}')
-        self._check_status()
-
-    def need_flush(self):
-        return len(self.message_buffer) == self.flush_interval
-
-    def on_flush(self) -> None:
-        print('Flushing messages:')
-        pprint(self.message_buffer)
-        self.flushed_messages.extend(self.message_buffer)
-        self.message_buffer.clear()
-
-    def on_shutdown(self) -> None:
-        print('######## SHUTDOWN #########')
-        self._check_status()
-        if self.status == Status.CRASHED and self.status_info is not None:
-            raise self.status_info
-        print('----\nFlushed messages:')
-        pprint(self.flushed_messages)
+# noinspection PyUnresolvedReferences
+from test.utils import cluster_hosts, topic
 
 
 @pytest.fixture
@@ -118,7 +74,7 @@ def produced_messages(plain_avro_producer, topic, cluster_hosts):
         '--describe', '--topic', topic_id
     ], capture_output=True)
 
-    print(result.stdout)
+    print(result.stdout.decode('utf-8'))
     if (result.stdout is None) or \
             (not len(result.stdout.splitlines()) == partitions+1):
         pytest.fail('not all partitions present!')
