@@ -1,6 +1,6 @@
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Tuple
 from unittest import mock
-from confluent_kafka import Message
+from confluent_kafka import Message, KafkaError
 from confluent_kafka import avro as confluent_avro
 from pprint import pprint
 import itertools as it
@@ -49,15 +49,17 @@ class ConnectTestMixin:
             if new_status is not None:
                 self._status = new_status
 
+
 class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
 
     def __init__(self, config: SourceConfig, records) -> None:
         super().__init__(config)
         self.records: List[Any] = records
-        self.initial_idx = 0
         self.idx = 0
 
     def seek(self, idx: int):
+        if idx is None:
+            self.idx = 0
         self.idx = idx
 
     def read(self) -> Any:
@@ -67,9 +69,6 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
             raise StopIteration()
         self.idx = self.get_next_index()
         return record
-
-    def _fetch_initial_index(self):
-        return self.initial_idx
 
     def get_next_index(self):
         return self.idx + 1
@@ -134,7 +133,8 @@ def message_repr(msg: Message):
     )
 
 
-@pytest.fixture(params=[Status.CRASHED, Exception()])
+@pytest.fixture(params=[Status.CRASHED, Exception()],
+                ids=['Status_CRASHED', 'Exception'])
 def failing_callback(request):
     return mock.Mock(side_effect=it.repeat(request.param))
 
@@ -185,3 +185,29 @@ def topic(request, cluster_hosts: Dict[str, str]):
         '--zookeeper', cluster_hosts['zookeeper'],
         '--describe', '--topic', topic_id
     ])
+
+
+@pytest.fixture
+def message_factory():
+    with mock.patch('test.utils.Message', autospec=True):
+        def message_factory_(key='key', value='value', topic='topic', offset=0, partition=0, error=None):
+            msg = Message()
+            msg.error.return_value = error
+            msg.topic.return_value = topic
+            msg.partition.return_value = partition
+            msg.offset.return_value = offset
+            msg.key.return_value = key
+            msg.value.return_value = value
+            return msg
+        yield message_factory_
+
+
+@pytest.fixture
+def error_message_factory(message_factory):
+    with mock.patch('test.utils.KafkaError', autospec=True):
+        def error_message_factory_(error_code=None):
+            error = KafkaError()
+            error.code.return_value = error_code
+            return message_factory(error=error)
+
+        yield error_message_factory_

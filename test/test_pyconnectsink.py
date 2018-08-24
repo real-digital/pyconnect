@@ -4,13 +4,11 @@ import pytest
 from pyconnect.pyconnectsink import Status
 from pyconnect.config import SinkConfig
 
-from confluent_kafka import Message
-from confluent_kafka import KafkaError
 
 from test.utils import PyConnectTestSink
 
 # noinspection PyUnresolvedReferences
-from test.utils import failing_callback
+from test.utils import failing_callback, message_factory, error_message_factory
 
 
 @pytest.fixture
@@ -38,30 +36,6 @@ def run_once_sink(sink_factory):
     sink = sink_factory()
     sink.forced_status_after_run = Status.STOPPED
     return sink
-
-
-@pytest.fixture
-def message_factory():
-    with mock.patch('test.test_pyconnectsink.Message', autospec=True):
-        def message_factory_():
-            msg = Message()
-            msg.error.return_value = None
-            msg.topic.return_value = 'testtopic'
-            msg.partition.return_value = 1
-            msg.offset.return_value = 1
-            return msg
-        yield message_factory_
-
-
-@pytest.fixture
-def error_message_factory(message_factory):
-    with mock.patch('test.test_pyconnectsink.KafkaError', autospec=True):
-        def error_message_factory_():
-            error = KafkaError()
-            msg = message_factory()
-            msg.error.return_value = error
-
-        yield error_message_factory_
 
 
 def test_callbacks_are_called(sink_factory, message_factory, error_message_factory) -> None:
