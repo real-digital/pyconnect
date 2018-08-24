@@ -1,47 +1,16 @@
-from typing import Any, List, Tuple
-from unittest import mock
 from time import sleep
 
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka import KafkaError
 
 import pytest
-import itertools as it
 
 from pyconnect.config import SourceConfig
-from pyconnect.pyconnectsource import PyConnectSource
-from pyconnect.core import Status
+from test.utils import PyConnectTestSource
 
-from test.utils import ConnectTestMixin
 
 # noinspection PyUnresolvedReferences
 from test.utils import cluster_hosts, topic
-
-
-class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
-
-    def __init__(self, config: SourceConfig, records) -> None:
-        super().__init__(config)
-        self.records: List[Any] = records
-        self.initial_idx = 0
-        self.idx = 0
-
-    def seek(self, idx: int):
-        self.idx = idx
-
-    def read(self) -> Any:
-        try:
-            record = self.records[self.idx]
-        except IndexError:
-            raise StopIteration()
-        self.idx = self.get_next_index()
-        return record
-
-    def _get_committed_offset(self):
-        return self.initial_idx
-
-    def get_next_index(self):
-        return self.idx + 1
 
 
 @pytest.fixture
@@ -56,10 +25,8 @@ def source_factory(topic, cluster_hosts):
         topic=topic_id
     )
 
-    def source_factory_(records: List[Tuple[Any, Any]], when_eof: Status):
-        source = PyConnectTestSource(config, [])
-        source.on_eof = mock.Mock(side_effect=it.repeat(when_eof))
-        source.records = records
+    def source_factory_():
+        source = PyConnectTestSource(config)
         return source
 
     yield source_factory_
@@ -72,21 +39,24 @@ def consume_all(topic, cluster_hosts):
         'bootstrap.servers': cluster_hosts['broker'],
         'schema.registry.url':  cluster_hosts['schema-registry'],
         'group.id': f'{topic_id}_consumer',
-        'enable.partition.eof': False
+        'enable.partition.eof': False,
+        "default.topic.config": {
+            "auto.offset.reset": "earliest"
+        }
     })
     consumer.subscribe([topic_id])
 
     def consume_all_():
-        messages = []
+        records = []
         while True:
-            msg = consumer.poll(timeout=10)
+            msg = consumer.poll(timeout=2)
             if msg is None:
                 break
             if msg.error() is not None:
                 assert msg.error().code() == KafkaError._PARTITION_EOF
                 break
-            messages.append(msg)
-        return messages
+            records.append((msg.key(), msg.value()))
+        return records
 
     yield consume_all_
     consumer.close()
@@ -105,14 +75,27 @@ def records():
 
 @pytest.mark.e2e
 def test_produce_messages(source_factory, records, consume_all):
-    source = source_factory(records=records, when_eof=Status.STOPPED)
+    source = source_factory().with_records(records)
 
     source.run()
     source._producer.flush()
     sleep(1)
-    messages = consume_all()
-    consumed_records = [(msg.key(), msg.value()) for msg in messages]
+    consumed_records = consume_all()
 
     assert set(records) == set(consumed_records)
 
 
+@pytest.mark.e2e
+def test_resume_producing(source_factory, consume_all):
+    first_records = [(1, 1), (2, 2), (3, 3)]
+    first_source = source_factory().with_records(first_records)
+
+    false_first_records = [(-1, -1), (-2, -2), (-3, -3)]
+    second_records = [(4, 4), (5, 5), (6, 6)]
+    second_source = source_factory().with_records(false_first_records + second_records)
+
+    first_source.run()
+    second_source.run()
+    consumed_records = consume_all()
+
+    assert set(consumed_records) == set(first_records + second_records)
