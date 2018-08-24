@@ -1,6 +1,16 @@
+from typing import Any
+from confluent_kafka import Message
+from confluent_kafka import avro as confluent_avro
 import pytest
 import string
 import random
+import json
+import os
+
+from pyconnect.avroparser import create_schema_from_record
+
+TEST_DIR = os.path.abspath(os.path.dirname(__file__))
+CLI_DIR = os.path.join(TEST_DIR, 'kafka', 'bin')
 
 
 class ConnectTestMixin():
@@ -33,3 +43,16 @@ class ConnectTestMixin():
 
 def rand_text(textlen):
     return ''.join(random.choices(string.ascii_uppercase, k=textlen))
+
+
+def to_schema(name: str, record: Any):
+    return confluent_avro.loads(json.dumps(
+        create_schema_from_record(name, record)))
+
+
+def message_repr(msg: Message):
+    return (
+        f'Message(key={msg.key()!r}, value={msg.value()!r}, '
+        f'topic={msg.topic()!r}, partition={msg.partition()!r}, '
+        f'offset={msg.offset()!r}, error={msg.error()!r})'
+    )

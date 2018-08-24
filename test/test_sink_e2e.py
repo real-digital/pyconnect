@@ -1,24 +1,18 @@
 from functools import partial
 from unittest import mock
-from typing import List, Dict, Any
+from typing import List
 from confluent_kafka import Message
 from confluent_kafka import avro as confluent_avro
 from pprint import pprint
 import subprocess
 import pytest
-import yaml
-import json
 import os
+import random
 
-from pyconnect.avroparser import create_schema_from_record
 from pyconnect.config import SinkConfig
 from pyconnect.pyconnectsink import PyConnectSink, Status
 
-from test.utils import ConnectTestMixin, rand_text
-
-
-THISDIR = os.path.abspath(os.path.dirname(__file__))
-CLI_DIR = os.path.join(THISDIR, 'kafka', 'bin')
+from test.utils import ConnectTestMixin, rand_text, to_schema, message_repr, CLI_DIR
 
 
 class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
@@ -63,54 +57,6 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
             raise self.status_info
         print('----\nFlushed messages:')
         pprint(self.flushed_messages)
-
-
-@pytest.fixture(scope='module')
-def cluster_hosts():
-    with open(os.path.join(THISDIR,
-                           'testenv-docker-compose.yml'), 'r') as infile:
-        yml_config = yaml.load(infile)
-
-    hosts = {}
-    for service, conf in yml_config['services'].items():
-        port = conf['ports'][0].split(':')[0]
-        hosts[service] = f'{service}:{port}'
-
-    hosts['schema-registry'] = 'http://'+hosts['schema-registry']
-    hosts['rest-proxy'] = 'http://'+hosts['rest-proxy']
-
-    completed = subprocess.run(
-        ['curl', '-s', hosts['rest-proxy'] + "/topics"],
-        stdout=subprocess.DEVNULL)
-
-    if completed.returncode != 0:
-        pytest.fail('Kafka Cluster is not running!')
-
-    return hosts
-
-
-@pytest.fixture(
-    params=[1, 2, 4],
-    ids=['num_partitions=1', 'num_partitions=2', 'num_partitions=4'])
-def topic(request, cluster_hosts: Dict[str, str]):
-    topic_id = rand_text(5)
-    partitions = request.param
-
-    subprocess.call([
-        os.path.join(CLI_DIR, 'kafka-topics.sh'),
-        '--zookeeper', cluster_hosts['zookeeper'],
-        '--create', '--topic', topic_id,
-        '--partitions', str(partitions),
-        '--replication-factor', '1'
-    ])
-
-    yield (topic_id, partitions)
-
-    subprocess.call([
-        os.path.join(CLI_DIR, 'kafka-topics.sh'),
-        '--zookeeper', cluster_hosts['zookeeper'],
-        '--describe', '--topic', topic_id
-    ])
 
 
 @pytest.fixture
@@ -178,19 +124,6 @@ def produced_messages(plain_avro_producer, topic, cluster_hosts):
         pytest.fail('not all partitions present!')
 
     yield messages
-
-
-def to_schema(name: str, record: Any):
-    return confluent_avro.loads(json.dumps(
-        create_schema_from_record(name, record)))
-
-
-def message_repr(msg: Message):
-    return (
-        f'Message(key={msg.key()!r}, value={msg.value()!r}, '
-        f'topic={msg.topic()!r}, partition={msg.partition()!r}, '
-        f'offset={msg.offset()!r}, error={msg.error()!r})'
-    )
 
 
 @pytest.mark.e2e
