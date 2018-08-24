@@ -1,3 +1,5 @@
+from confluent_kafka import avro as confluent_avro
+import json
 from typing import Any, Dict
 
 RecordDict = Dict[str, Any]
@@ -74,3 +76,11 @@ def create_schema_from_record(name: str, record: RecordDict, namespace: str = No
         template["namespace"] = namespace
 
     return template
+
+def to_key_schema(record: Any):
+    return confluent_avro.loads(json.dumps(
+        create_schema_from_record('key', record)))
+
+def to_value_schema(record: Any):
+    return confluent_avro.loads(json.dumps(
+        create_schema_from_record('value', record)))
