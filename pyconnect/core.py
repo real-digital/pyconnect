@@ -21,6 +21,7 @@ class BaseConnector(metaclass=ABCMeta):
 
     def __init__(self):
         self._status = Status.NOT_YET_RUNNING
+        self._status_info = None
 
     @property
     def is_running(self):
@@ -91,6 +92,8 @@ class BaseConnector(metaclass=ABCMeta):
     def _after_run_loop(self):
         try:
             self._on_shutdown()
+            if self._status == Status.CRASHED and isinstance(self._status_info, Exception):
+                raise self._status_info
         finally:
             self.close()
 

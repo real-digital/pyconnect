@@ -72,12 +72,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     """
 
     def __init__(self, config: SinkConfig) -> None:
-        self.config: SinkConfig = config
-
-        # The status can be changed from different events, like stopping from
-        # callbacks or crashing
-        self._status: Status = Status.NOT_YET_RUNNING
-        self._status_info: Any = None
+        super().__init__()
+        self.config = config
 
         self._consumer: AvroConsumer = self._make_consumer()
         self.last_message: Message = None

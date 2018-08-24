@@ -247,4 +247,5 @@ class SinkConfig(BaseConfig):
 
 @dataclasses.dataclass
 class SourceConfig(BaseConfig):
+    topic: str = dataclasses.field()
     offset_topic: str = '_pyconnect_offsets'
