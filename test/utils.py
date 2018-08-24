@@ -123,11 +123,11 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
             record = self.records[self.idx]
         except IndexError:
             raise StopIteration()
-        self.idx = self.get_next_index()
+        self.idx += 1
         return record
 
-    def get_next_index(self):
-        return self.idx + 1
+    def get_index(self):
+        return self.idx
 
 
 class PyConnectTestSink(ConnectTestMixin, PyConnectSink):

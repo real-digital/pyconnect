@@ -90,3 +90,8 @@ def test_exception_raised_on_shutdown(source_factory):
 
     with pytest.raises(TestException):
         source.run()
+
+def test_commit_is_called(source_factory):
+    source = source_factory().with_mock_for('_commit')
+    source.run()
+    assert source._commit.called
