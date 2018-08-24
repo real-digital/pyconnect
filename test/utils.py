@@ -22,6 +22,10 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 CLI_DIR = os.path.join(TEST_DIR, 'kafka', 'bin')
 
 
+class TestException(Exception):
+    pass
+
+
 class ConnectTestMixin:
 
     def __init__(self, *args, **kwargs):
@@ -52,10 +56,62 @@ class ConnectTestMixin:
 
 class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
 
-    def __init__(self, config: SourceConfig, records) -> None:
+    def __init__(self, config: SourceConfig) -> None:
         super().__init__(config)
-        self.records: List[Any] = records
+        self.records: List[Any] = []
         self.idx = 0
+        self._when_eof = Status.STOPPED
+        self._when_crashed = None
+        self._ignore_crash = False
+
+    def on_eof(self):
+        if isinstance(self._when_eof, Exception):
+            raise self._when_eof
+        return self._when_eof
+
+    def on_crashed(self):
+        if isinstance(self._when_crashed, Exception):
+            raise self._when_crashed
+        return self._when_crashed
+
+    def on_shutdown(self):
+        if self.status == Status.CRASHED and self._ignore_crash:
+            self._status = Status.STOPPED
+
+    def ignoring_crash_on_shutdown(self) -> 'PyConnectTestSource':
+        self._ignore_crash = True
+        return self
+
+    def with_records(self, records: List[Tuple[Any, Any]]) -> 'PyConnectTestSource':
+        self.records = records
+        return self
+
+    def with_wrapper_for(self, func: str) -> 'PyConnectTestSource':
+        old_func = getattr(self, func)
+        setattr(self, func, mock.Mock(name=func, wraps=old_func))
+        return self
+
+    def with_mock_for(self, func: str) -> 'PyConnectTestSource':
+        setattr(self, func, mock.Mock(name=func))
+        return self
+
+    def when_eof(self, return_value) -> 'PyConnectTestSource':
+        self._when_eof = return_value
+        return self
+
+    def when_crashed(self, return_value) -> 'PyConnectTestSource':
+        self._when_crashed = return_value
+        return self
+
+    def with_committed_offset(self, offset: Any) -> 'PyConnectTestSource':
+        # noinspection PyAttributeOutsideInit
+        self._committed_offset = offset
+        return self
+
+    def _get_committed_offset(self):
+        if hasattr(self, '_committed_offset'):
+            return self._committed_offset
+        return super()._get_committed_offset()
 
     def seek(self, idx: int):
         if idx is None:
@@ -133,8 +189,8 @@ def message_repr(msg: Message):
     )
 
 
-@pytest.fixture(params=[Status.CRASHED, Exception()],
-                ids=['Status_CRASHED', 'Exception'])
+@pytest.fixture(params=[Status.CRASHED, TestException()],
+                ids=['Status_CRASHED', 'TestException'])
 def failing_callback(request):
     return mock.Mock(side_effect=it.repeat(request.param))
 
@@ -211,3 +267,8 @@ def error_message_factory(message_factory):
             return message_factory(error=error)
 
         yield error_message_factory_
+
+
+@pytest.fixture
+def eof_message(error_message_factory):
+    return error_message_factory(error_code=KafkaError._PARTITION_EOF)
