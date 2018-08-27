@@ -146,14 +146,14 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         print('Kafka consumer group status:')
         subprocess.call([
             os.path.join(CLI_DIR, 'kafka-consumer-groups.sh'),
-            '--bootstrap-server', self.config.bootstrap_servers[0],
-            '--describe', '--group', self.config.group_id,
+            '--bootstrap-server', self.config['bootstrap_servers'][0],
+            '--describe', '--group', self.config['group_id'],
             '--offsets', '--verbose'
         ])
 
     def on_startup(self):
         print('######## CONSUMER STARUP #########')
-        print(f'Config: {self.config}')
+        print(f'Config: {self.config!r}')
         self._check_status()
 
     def need_flush(self):

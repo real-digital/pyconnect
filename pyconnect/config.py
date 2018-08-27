@@ -1,5 +1,5 @@
 from pyconnect.core import PyConnectException
-import dataclasses
+import datetime as dt
 import ast
 from typing import List, Dict, Callable, Any, Union, Type, Pattern, ClassVar
 import json
@@ -20,6 +20,33 @@ class ConfigException(PyConnectException):
 
 class SanityError(ConfigException):
     pass
+
+
+def call_if_string(parser: Callable[[str], Any]) -> Callable:
+
+    def optional_parser(field):
+        if isinstance(field, str):
+            return parser(field)
+        return field
+
+    return optional_parser
+
+
+def timedelta_parser(field: str) -> dt.timedelta:
+    unit_map = {
+        'ms': 'milliseconds',
+        'us': 'microseconds',
+        's': 'seconds',
+        'h': 'hours',
+        'd': 'days',
+        'w': 'weeks'
+    }
+
+    matches = re.findall(r'(?P<unit_value>\d+)(?P<unit_key>ms|us|s|h|d|w)', field)
+    return dt.timedelta(**{
+        unit_map[match['unit_key']]: int(match['unit_value'])
+        for match in matches
+    })
 
 
 def check_field_matches_pattern(field: str, pattern: Union[str, Pattern]):
@@ -124,128 +151,159 @@ def csv_line_reader(separator=',', quoter='"', escaper='\\',
     return line_reader
 
 
-@dataclasses.dataclass
-class BaseConfig:
-    bootstrap_servers: List[str] = dataclasses.field(metadata={
-        'parser': csv_line_reader()
-    })
+class BaseConfig(dict):
     """
-    Servers to connect to. PyConnect will cycle trough them and try each one
-    until it can establish a connection. Other servers will be discovered via
-    kafka metadata once a connection was successful.
+    :param bootstrap_servers: Servers used for establishing connection to Kafka cluster.
+                              String with servers separated by ',' may be given.
+                              Any quotes or whitespaces will be stripped
+    :type bootstrap_servers: List[str]
 
-    Servers are separated by `,`
+    :param schema_registry: Server holding schema-information for avro data conversion.
+                            See https://github.com/confluentinc/schema-registry
+    :type schema_registry: str
+
+    :param offset_commit_interval: Interval after which a Source or Sink shall commit its offsets to Kafka.
+                                   May be `None`, then only `batch_size` is used.
+                                   Interval may be given as a string in the form `'1h 30m'` meaning one hour and
+                                   30 minutes.
+                                   Valid units are *us = microseconds*, *ms = milliseconds*, *s = seconds*,
+                                   *m = minutes*, *h = hours*, *d = days*, *w = weeks*.
+                                   **Default is 30m**
+    :type offset_commit_interval: datetime.timedelta
+
+    :param kafka_opts: Additional options that shall be passed to the underlying Kafka library.
+                       See https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for documentation.
+    :type kafka_opts: Dict[str, str]
     """
 
-    schema_registry: str = dataclasses.field()
-    """
-    Schema registry server that holds the schema information which is used for
-    message schema resolution.
-    """
-
-    flush_interval: float = dataclasses.field(metadata={
-        'parser': float})
-    """
-    Interval in seconds after which a Source or Sink shall flush buffered
-    messages and/or commit its offset.
-    """
-
-    __sanity_checks: ClassVar[List[SanityCheck]] = [
-        '{flush_interval}>0',
+    __sanity_checks = [
+        '{offset_commit_interval}>0',
         check_field_is_valid_url('schema_registry'),
         check_field_is_valid_url('bootstrap_servers'),
     ]
 
-    def __post_init__(self) -> None:
+    __parsers = {
+        'bootstrap_servers': csv_line_reader(),
+        'offset_commit_interval': timedelta_parser,
+        'kafka_opts': json.loads
+    }
+
+    def __init__(self, conf_dict: dict):
+        super().__init__()
+        self['bootstrap_servers'] = conf_dict.pop('bootstrap_servers')
+        self['schema_registry'] = conf_dict.pop('schema_registry')
+        self['offset_commit_interval'] = conf_dict.pop('offset_commit_interval', '30m')
+        self['kafka_opts'] = conf_dict.pop('kafka_opts', {})
+
+        if len(conf_dict) != 0:
+            raise TypeError(f'The following options are unused: {conf_dict!r}')
+
         self._apply_parsers()
         self._perform_sanity_checks()
 
     def _apply_parsers(self) -> None:
-        for field in dataclasses.fields(self):
-            if field.metadata is None or 'parser' not in field.metadata:
+        parsers = self._find_parsers()
+        for field, parser in parsers.items():
+            value = self[field]
+            if not isinstance(value, str):
                 continue
-            parser = field.metadata['parser']
-            value = getattr(self, field.name)
             parsed_value = parser(value)
-            setattr(self, field.name, parsed_value)
+            self[field] = parsed_value
 
-    def _find_sanity_checks(self) -> List[SanityCheck]:
-        checks: List[SanityCheck] = []
+    def _find_parsers(self) -> Dict[str, Callable]:
+        parsers: Dict[str, Callable] = {}
+
+        for cls in self._find_subclasses():
+            attr_name = f'_{cls.__name__}__parsers'
+            if hasattr(self, attr_name):
+                parsers.update(getattr(self, attr_name))
+        return parsers
+
+    def _find_subclasses(self):
+        subclasses: List[type] = []
         for cls in inspect.getmro(type(self)):
             if issubclass(cls, BaseConfig):
-                attr = f'_{cls.__name__}__sanity_checks'
-                checks.extend(getattr(cls, attr, []))
-        return checks
+                subclasses.append(cls)
+        return subclasses
 
     def _perform_sanity_checks(self) -> None:
         logger.debug(f'Performing sanity checks on {self}')
         all_checks = self._find_sanity_checks()
         logger.debug(f'Found {len(all_checks)} sanity checks!')
 
-        field_values: Dict[str, Any] = dataclasses.asdict(self)
         for check in all_checks:
             if isinstance(check, str):
                 checker = _checkstr_to_checker(check)
             else:
                 checker = check
-            checker(field_values)
+            checker(self)
         logger.info('Config checks out sane!')
+
+    def _find_sanity_checks(self) -> List[SanityCheck]:
+        checks: List[SanityCheck] = []
+
+        for cls in self._find_subclasses():
+            attr_name = f'_{cls.__name__}__sanity_checks'
+            if hasattr(self, attr_name):
+                checks.extend(getattr(self, attr_name))
+        return checks
 
     @classmethod
     def from_yaml_file(cls: Type['BaseConfig'],
                        yaml_file: str) -> 'BaseConfig':
         with open(yaml_file, 'r') as infile:
             conf = yaml.load(infile)
-        return cls(**conf)
+        return cls(conf)
 
     @classmethod
     def from_json_file(cls: Type['BaseConfig'],
                        json_file: str) -> 'BaseConfig':
         with open(json_file, 'r') as infile:
             conf = json.load(infile)
-        return cls(**conf)
+        return cls(conf)
 
     @classmethod
     def from_json_string(cls: Type['BaseConfig'],
                          json_string: str) -> 'BaseConfig':
         conf = json.loads(json_string)
-        return cls(**conf)
+        return cls(conf)
 
     @classmethod
     def from_env_variables(cls: Type['BaseConfig']) -> 'BaseConfig':
-        fields = dataclasses.fields(cls)
-        env_vars = [
-            'PYCONNECT_'+field.name.upper()
-            for field in fields
-        ]
-
         conf = {
-            field.name: os.environ[env_var]
-            for field, env_var in zip(fields, env_vars)
-            if env_var in os.environ
+            key[len('PYCONNECT_'):]: value
+            for key, value in os.environ
+            if 'PYCONNECT_' in key
         }
 
-        return cls(**conf)  # type: ignore
+        return cls(conf)  # type: ignore
 
 
-@dataclasses.dataclass
 class SinkConfig(BaseConfig):
-    group_id: str = dataclasses.field()
+    """
+    :param :
+    """
 
-    topics: List[str] = dataclasses.field(metadata={
-        'parser': csv_line_reader()})
-
-    poll_timeout: int = dataclasses.field(default=60, metadata={
-        'parser': int})
-
-    consumer_options: Dict[str, str] = dataclasses.field(default_factory=dict)
-
-    __sanity_checks: ClassVar[List[SanityCheck]] = [
+    __parsers = {
+        'poll_timeout': int,
+        'topics': csv_line_reader()
+    }
+    __sanity_checks = [
         '{poll_timeout}==-1 or {poll_timeout}>0'
     ]
 
+    def __init__(self, conf_dict):
+        self['group_id'] = conf_dict.pop('group_id')
+        self['topics'] = conf_dict.pop('topics')
+        self['poll_timeout'] = conf_dict.pop('poll_timeout', 2)
 
-@dataclasses.dataclass
+        super().__init__(conf_dict)
+
+
 class SourceConfig(BaseConfig):
-    topic: str = dataclasses.field()
-    offset_topic: str = '_pyconnect_offsets'
+
+    def __init__(self, conf_dict):
+        self['topic'] = conf_dict.pop('topic')
+        self['offset_topic'] = conf_dict.pop('offset_topic', '_pyconnect_offsets')
+
+        super().__init__(conf_dict)

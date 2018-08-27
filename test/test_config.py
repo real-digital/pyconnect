@@ -78,30 +78,30 @@ def test_host_splitting():
         'there-is-more/where/that/came%20/from?blah=blubb&foo=bar'
     ]
 
-    config = SinkConfig(bootstrap_servers=servers,
-                        schema_registry='localhost', flush_interval=1,
-                        group_id='groupid', topics='topics')
+    config = SinkConfig(dict(bootstrap_servers=servers,
+                        schema_registry='localhost', offset_commit_interval=1,
+                        group_id='groupid', topics='topics'))
 
-    assert config.bootstrap_servers == servers_list
+    assert config['bootstrap_servers'] == servers_list
 
 
 def test_sanity_check_success():
-    config = SinkConfig(bootstrap_servers='localhost',
-                        schema_registry='localhost', flush_interval=1,
-                        group_id='groupid', topics='topics')
+    config = SinkConfig(dict(bootstrap_servers='localhost',
+                        schema_registry='localhost', offset_commit_interval=1,
+                        group_id='groupid', topics='topics'))
 
-    assert config.flush_interval == 1
+    assert config['offset_commit_interval'] == 1
 
 
 def test_sanity_check_failure(caplog):
     caplog.set_level(logging.DEBUG)
     with pytest.raises(SanityError):
-        BaseConfig(bootstrap_servers='localhost', schema_registry='localhost',
-                   flush_interval=-1)
+        BaseConfig(dict(bootstrap_servers='localhost', schema_registry='localhost',
+                   offset_commit_interval=-1))
 
 
 def test_sanity_check_failure_subclass(caplog):
     caplog.set_level(logging.DEBUG)
     with pytest.raises(SanityError):
-        SinkConfig(bootstrap_servers='localhost', schema_registry='locahlost',
-                   flush_interval=-1, group_id='groupid', topics='topics')
+        SinkConfig(dict(bootstrap_servers='localhost', schema_registry='locahlost',
+                   offset_commit_interval=-1, group_id='groupid', topics='topics'))

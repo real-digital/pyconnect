@@ -23,24 +23,24 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
 
     def _make_offset_consumer(self) -> AvroConsumer:
         config = {
-            'bootstrap.servers': ','.join(self.config.bootstrap_servers),
-            'schema.registry.url': self.config.schema_registry,
+            'bootstrap.servers': ','.join(self.config['bootstrap_servers']),
+            'schema.registry.url': self.config['schema_registry'],
             'enable.auto.commit': False,
             'offset.store.method': 'none',
-            'group.id': f'{self.config.offset_topic}_fetcher',
+            'group.id': f'{self.config["offset_topic"]}_fetcher',
             'default.topic.config': {
                 'auto.offset.reset': 'latest'
             },
         }
         offset_consumer = AvroConsumer(config)
-        offset_consumer.assign([TopicPartition(self.config.offset_topic, 0, OFFSET_END)])
+        offset_consumer.assign([TopicPartition(self.config['offset_topic'], 0, OFFSET_END)])
 
         return offset_consumer
 
     def _make_producer(self) -> AvroProducer:
         config = {
-            'bootstrap.servers': ','.join(self.config.bootstrap_servers),
-            'schema.registry.url': self.config.schema_registry
+            'bootstrap.servers': ','.join(self.config['bootstrap_servers']),
+            'schema.registry.url': self.config['schema_registry']
         }
         return AvroProducer(config)
 
@@ -56,7 +56,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         self._producer.produce(key=key, value=value,
                                key_schema=self._key_schema,
                                value_schema=self._value_schema,
-                               topic=self.config.topic)
+                               topic=self.config['topic'])
 
     def _create_schemas_if_necessary(self, key, value):
         if self._key_schema is None:
@@ -90,7 +90,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         if self._offset_schema is None:
             self._offset_schema = to_value_schema(idx)
 
-        self._producer.produce(topic=self.config.offset_topic, key=None, value=idx,
+        self._producer.produce(topic=self.config['offset_topic'], key=None, value=idx,
                                value_schema=self._offset_schema)
         self._producer.flush()
 
@@ -104,7 +104,6 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             self._handle_general_exception(e)
         if self._status == Status.CRASHED:
             self._on_crash()
-
 
     def close(self) -> None:
         try:

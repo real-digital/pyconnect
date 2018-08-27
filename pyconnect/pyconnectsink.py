@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Optional
 
 from pyconnect.config import SinkConfig
 from pyconnect.core import Status, BaseConnector
@@ -156,7 +156,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         try:
             self.last_message = None
             self._status_info = None
-            msg = self._consumer.poll(self.config.poll_timeout)
+            msg = self._consumer.poll(self.config['poll_timeout'])
             self.last_message = msg
             self._call_right_handler_for_message(msg)
             self._flush_if_needed_and_commit()
@@ -201,9 +201,9 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _make_consumer(self) -> AvroConsumer:
         config = {
-            "bootstrap.servers": ','.join(self.config.bootstrap_servers),
-            "group.id": self.config.group_id,
-            "schema.registry.url": self.config.schema_registry,
+            "bootstrap.servers": ','.join(self.config['bootstrap_servers']),
+            "group.id": self.config['group_id'],
+            "schema.registry.url": self.config['schema_registry'],
 
             # We need to commit offsets manually once we"re sure it got saved
             # to the sink
@@ -217,8 +217,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             "default.topic.config": {
                 "auto.offset.reset": "earliest"
             },
-            **self.config.consumer_options
+            **self.config['kafka_opts']
         }
         consumer = AvroConsumer(config)
-        consumer.subscribe(self.config.topics)
+        consumer.subscribe(self.config['topics'])
         return consumer

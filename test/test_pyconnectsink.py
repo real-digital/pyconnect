@@ -13,14 +13,14 @@ from test.utils import failing_callback, message_factory, error_message_factory
 
 @pytest.fixture
 def sink_factory():
-    conf = SinkConfig(
+    conf = SinkConfig(dict(
         bootstrap_servers='localhost',
         schema_registry='localhost',
-        flush_interval=1,
+        offset_commit_interval=1,
         group_id='group_id',
         poll_timeout=1,
         topics=''
-    )
+    ))
     with mock.patch('pyconnect.pyconnectsink.AvroConsumer', autospec=True):
         def sink_factory_():
             sink = PyConnectTestSink(conf)

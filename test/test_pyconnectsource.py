@@ -2,7 +2,6 @@ from unittest import mock
 import pytest
 
 from pyconnect.config import SourceConfig
-from pyconnect.core import Status
 
 from test.utils import PyConnectTestSource, TestException
 
@@ -12,13 +11,13 @@ from test.utils import failing_callback, eof_message, error_message_factory, mes
 
 @pytest.fixture
 def source_factory(eof_message, message_factory):
-    config = SourceConfig(
+    config = SourceConfig(dict(
         bootstrap_servers='testserver',
         offset_topic='testtopic',
         schema_registry='testregistry',
-        flush_interval=5,
+        offset_commit_interval=5,
         topic='testtopic'
-    )
+    ))
 
     with mock.patch('pyconnect.pyconnectsource.AvroProducer'), \
             mock.patch('pyconnect.pyconnectsource.AvroConsumer'):
@@ -90,6 +89,7 @@ def test_exception_raised_on_shutdown(source_factory):
 
     with pytest.raises(TestException):
         source.run()
+
 
 def test_commit_is_called(source_factory):
     source = source_factory().with_mock_for('_commit')

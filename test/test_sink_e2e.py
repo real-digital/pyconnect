@@ -19,14 +19,14 @@ from test.utils import cluster_hosts, topic
 def sink_config(cluster_hosts, topic):
     topic_id, partitions = topic
     group_id = topic_id + '_sink_group_id'
-    config = SinkConfig(
+    config = SinkConfig(dict(
             bootstrap_servers=cluster_hosts['broker'],
             schema_registry=cluster_hosts['schema-registry'],
-            flush_interval=1,
+            offset_commit_interval=1,
             group_id=group_id,
             poll_timeout=2,
             topics=topic_id
-    )
+    ))
     yield config
 
 
@@ -72,7 +72,7 @@ def produced_messages(plain_avro_producer, topic, cluster_hosts):
         os.path.join(CLI_DIR, 'kafka-topics.sh'),
         '--zookeeper', cluster_hosts['zookeeper'],
         '--describe', '--topic', topic_id
-    ], capture_output=True)
+    ], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
     print(result.stdout.decode('utf-8'))
     if (result.stdout is None) or \

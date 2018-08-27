@@ -17,19 +17,20 @@ from test.utils import cluster_hosts, topic
 def source_factory(topic, cluster_hosts):
     topic_id, _ = topic
 
-    config = SourceConfig(
+    config = SourceConfig(dict(
         bootstrap_servers=cluster_hosts['broker'],
         schema_registry=cluster_hosts['schema-registry'],
         offset_topic=f'{topic_id}_offsets',
-        flush_interval=5,
+        offset_commit_interval=5,
         topic=topic_id
-    )
+    ))
 
     def source_factory_():
         source = PyConnectTestSource(config)
         return source
 
     yield source_factory_
+
 
 @pytest.fixture
 def consume_all(topic, cluster_hosts):
