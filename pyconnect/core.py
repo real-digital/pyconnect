@@ -1,7 +1,7 @@
 from confluent_kafka import KafkaException
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import List, Dict, Callable, Any
+from typing import Callable
 import logging
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,6 @@ class BaseConnector(metaclass=ABCMeta):
         self._before_run_loop()
         self._run_loop()
         self._after_run_loop()
-        self._status
 
     def _run_loop(self):
         while self.is_running:
@@ -64,9 +63,7 @@ class BaseConnector(metaclass=ABCMeta):
         self._status = Status.CRASHED
         self._status_info = e
 
-    def _safe_call_and_set_status(self, callback: Callable,
-                                  *args: List[Any],
-                                  **kwargs: Dict[Any, Any]) -> None:
+    def _safe_call_and_set_status(self, callback: Callable, *args, **kwargs) -> None:
         try:
             new_status = callback(*args, **kwargs)
         except Exception as e:
