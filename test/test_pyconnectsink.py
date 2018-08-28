@@ -5,7 +5,7 @@ from pyconnect.pyconnectsink import Status
 from pyconnect.config import SinkConfig
 
 
-from test.utils import PyConnectTestSink
+from test.utils import PyConnectTestSink, TestException
 
 # noinspection PyUnresolvedReferences
 from test.utils import failing_callback, message_factory, error_message_factory
@@ -65,7 +65,7 @@ def test_callbacks_are_called(sink_factory, message_factory, error_message_facto
             msg,
             None,
             error_msg,
-            Exception()]
+            TestException()]
 
     # perform
     connect_sink.run()
@@ -129,7 +129,7 @@ def test_last_message_is_unset(sink_factory, message_factory):
     # setup
     msg = message_factory()
     connect_sink = sink_factory()
-    connect_sink._consumer.poll.side_effect = [msg, Exception()]
+    connect_sink._consumer.poll.side_effect = [msg, TestException()]
 
     # perform
     connect_sink.run()
@@ -141,7 +141,7 @@ def test_last_message_is_unset(sink_factory, message_factory):
 def test_status_info_is_set(sink_factory, message_factory):
     # setup
     msg = message_factory()
-    exception = Exception()
+    exception = TestException()
     connect_sink = sink_factory()
     connect_sink._consumer.poll.side_effect = [msg, exception]
 
@@ -155,7 +155,7 @@ def test_status_info_is_set(sink_factory, message_factory):
 def test_status_info_is_unset(sink_factory):
     # setup
     connect_sink = sink_factory()
-    connect_sink._consumer.poll.side_effect = [Exception(), None]
+    connect_sink._consumer.poll.side_effect = [TestException(), None]
     connect_sink.on_crash = mock.Mock(return_value=Status.RUNNING)
     connect_sink.forced_status_after_run = [None, Status.STOPPED]
 
