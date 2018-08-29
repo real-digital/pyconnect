@@ -26,6 +26,7 @@ class TestException(Exception):
     pass
 
 
+# noinspection PyUnresolvedReferences
 class ConnectTestMixin:
 
     def __init__(self, *args, **kwargs):
@@ -33,6 +34,7 @@ class ConnectTestMixin:
         self.forced_status_after_run = None
         self.run_counter = 0
         self.max_runs = 20
+        self._ignore_crash = False
 
     def _run_loop(self):
         while self.is_running:
@@ -41,6 +43,10 @@ class ConnectTestMixin:
             self.run_counter += 1
 
             self._run_once()
+            if self._status == Status.CRASHED and \
+                    self._status_info is not None and \
+                    not isinstance(self._status_info, TestException):
+                raise self._status_info
 
             if isinstance(self.forced_status_after_run, list):
                 if len(self.forced_status_after_run) > 1:
@@ -53,6 +59,71 @@ class ConnectTestMixin:
             if new_status is not None:
                 self._status = new_status
 
+    def on_crashed(self):
+        try:
+            new_status = super().on_crashed()
+        except Exception as e:
+            new_status = e
+
+        if hasattr(self, '_when_crashed'):
+            new_status = self._when_crashed
+
+        if isinstance(new_status, Exception):
+            raise new_status
+        return new_status
+
+    def on_shutdown(self):
+        super().on_shutdown()
+        if self.status == Status.CRASHED and self._ignore_crash:
+            self._status = Status.STOPPED
+
+    def when_crashed(self, return_value) -> 'ConnectTestMixin':
+        self._when_crashed = return_value
+        return self
+
+    def ignoring_crash_on_shutdown(self) -> 'ConnectTestMixin':
+        self._ignore_crash = True
+        return self
+
+    def with_wrapper_for(self, func: str) -> 'ConnectTestMixin':
+        old_func = getattr(self, func)
+        setattr(self, func, mock.Mock(name=func, wraps=old_func))
+        return self
+
+    def with_mock_for(self, func: str) -> 'ConnectTestMixin':
+        setattr(self, func, mock.Mock(name=func))
+        return self
+
+    def with_function_raising_after_n_calls(self, funcname: str,
+                                            exception: Exception, n_calls: int) -> 'ConnectTestMixin':
+        counter = 0
+        original_function = getattr(self, funcname)
+
+        def wrapper_function(*args, **kwargs):
+            nonlocal counter
+            if counter == n_calls:
+                raise exception
+            counter += 1
+            return original_function(*args, **kwargs)
+
+        setattr(self, funcname, wrapper_function)
+        return self
+
+    def with_function_returning_after_n_calls(self, funcname: str,
+                                              return_value: Any, n_calls: int) -> 'ConnectTestMixin':
+        counter = 0
+        original_function = getattr(self, funcname)
+
+        def wrapper_function(*args, **kwargs):
+            nonlocal counter
+            if counter == n_calls:
+                return return_value
+            counter += 1
+            return original_function(*args, **kwargs)
+
+        setattr(self, funcname, wrapper_function)
+        return self
+
 
 class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
 
@@ -61,46 +132,18 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
         self.records: List[Any] = []
         self.idx = 0
         self._when_eof = Status.STOPPED
-        self._when_crashed = None
-        self._ignore_crash = False
 
     def on_eof(self):
         if isinstance(self._when_eof, Exception):
             raise self._when_eof
         return self._when_eof
 
-    def on_crashed(self):
-        if isinstance(self._when_crashed, Exception):
-            raise self._when_crashed
-        return self._when_crashed
-
-    def on_shutdown(self):
-        if self.status == Status.CRASHED and self._ignore_crash:
-            self._status = Status.STOPPED
-
-    def ignoring_crash_on_shutdown(self) -> 'PyConnectTestSource':
-        self._ignore_crash = True
-        return self
-
     def with_records(self, records: List[Tuple[Any, Any]]) -> 'PyConnectTestSource':
         self.records = records
         return self
 
-    def with_wrapper_for(self, func: str) -> 'PyConnectTestSource':
-        old_func = getattr(self, func)
-        setattr(self, func, mock.Mock(name=func, wraps=old_func))
-        return self
-
-    def with_mock_for(self, func: str) -> 'PyConnectTestSource':
-        setattr(self, func, mock.Mock(name=func))
-        return self
-
     def when_eof(self, return_value) -> 'PyConnectTestSource':
         self._when_eof = return_value
-        return self
-
-    def when_crashed(self, return_value) -> 'PyConnectTestSource':
-        self._when_crashed = return_value
         return self
 
     def with_committed_offset(self, offset: Any) -> 'PyConnectTestSource':
@@ -140,6 +183,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
 
     def on_message_received(self, msg: Message) -> None:
         print(f'Message received: {message_repr(msg)}')
+        # noinspection PyArgumentList
         self.message_buffer.append((msg.key(), msg.value()))
 
     def _check_status(self):
@@ -170,6 +214,11 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         self._check_status()
         print('----\nFlushed messages:')
         pprint(self.flushed_messages)
+
+    def on_no_message_received(self):
+        if self.eof_reached != {} and all(self.eof_reached.values()):
+            return Status.STOPPED
+        return None
 
 
 def rand_text(textlen):

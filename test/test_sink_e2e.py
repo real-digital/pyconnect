@@ -1,5 +1,4 @@
 from functools import partial
-from unittest import mock
 from confluent_kafka import avro as confluent_avro
 import subprocess
 import pytest
@@ -7,9 +6,8 @@ import os
 import random
 
 from pyconnect.config import SinkConfig
-from pyconnect.pyconnectsink import Status
 
-from test.utils import PyConnectTestSink, rand_text, to_schema, CLI_DIR
+from test.utils import PyConnectTestSink, rand_text, to_schema, CLI_DIR, TestException
 
 # noinspection PyUnresolvedReferences
 from test.utils import cluster_hosts, topic
@@ -24,7 +22,7 @@ def sink_config(cluster_hosts, topic):
             schema_registry=cluster_hosts['schema-registry'],
             offset_commit_interval=1,
             group_id=group_id,
-            poll_timeout=2,
+            poll_timeout=10,
             topics=topic_id
     ))
     yield config
@@ -32,8 +30,13 @@ def sink_config(cluster_hosts, topic):
 
 @pytest.fixture
 def connect_sink_factory(sink_config):
-    def connect_sink_factory_():
-        return PyConnectTestSink(sink_config)
+    def connect_sink_factory_(custom_config=None):
+        if custom_config is not None:
+            config = sink_config.copy()
+            config.update(custom_config)
+        else:
+            config = sink_config
+        return PyConnectTestSink(config)
     return connect_sink_factory_
 
 
@@ -85,9 +88,6 @@ def produced_messages(plain_avro_producer, topic, cluster_hosts):
 @pytest.mark.e2e
 def test_message_consumption(produced_messages, connect_sink_factory):
     connect_sink = connect_sink_factory()
-    # stop after 2 empty messages were received
-    connect_sink.on_no_message_received = mock.Mock(
-        side_effect=[None]*0 + [Status.STOPPED])
 
     connect_sink.run()
 
@@ -100,19 +100,13 @@ def test_message_consumption(produced_messages, connect_sink_factory):
 @pytest.mark.e2e
 def test_continue_after_crash(produced_messages, connect_sink_factory):
     connect_sink = connect_sink_factory()
-    connect_sink.forced_status_after_run = [None]*7 + [Status.CRASHED]
+    connect_sink.with_function_raising_after_n_calls('on_message_received', TestException(), 7)
+    connect_sink.with_mock_for('close')
 
     connect_sink.run()
     flushed_messages = connect_sink.flushed_messages
 
     connect_sink = connect_sink_factory()
-    # it takes a while until partition assignment is complete and messages
-    # start arriving
-    # TODO: see if consumer.assignment() is an indicator for this
-    # maybe we can use on_assign and on_revoke to figure out whether to poll
-    # or to wait
-    connect_sink.on_no_message_received = mock.Mock(
-        side_effect=[None]*5 + [Status.STOPPED])
 
     connect_sink.run()
 

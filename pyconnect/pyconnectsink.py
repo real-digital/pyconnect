@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Tuple, Dict, Optional
+from typing import Tuple, Dict, Optional, List
 
 from pyconnect.config import SinkConfig
 from pyconnect.core import Status, BaseConnector
 
 from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.cimpl import KafkaException
+from confluent_kafka.cimpl import KafkaException, KafkaError
 from confluent_kafka import Message, TopicPartition
 
 import logging
@@ -23,7 +23,10 @@ def determine_message_type(msg: Optional[Message]) -> MessageType:
     if msg is None:
         return MessageType.NO_MESSAGE
     if msg.error() is not None:
-        return MessageType.ERROR
+        if msg.error().code() == KafkaError._PARTITION_EOF:
+            return MessageType.NO_MESSAGE
+        else:
+            return MessageType.ERROR
     return MessageType.STANDARD
 
 
@@ -75,9 +78,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
 
-        self._consumer: AvroConsumer = self._make_consumer()
         self.last_message: Message = None
         self._offsets: Dict[Tuple[str, int], TopicPartition] = {}
+        self.eof_reached: Dict[Tuple[str, int], bool] = {}
+
+        self._consumer: AvroConsumer = self._make_consumer()
 
     # public functions
     @abstractmethod
@@ -124,6 +129,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     # Hook wrappers
 
     def _on_message_received(self, msg: Message):
+        self.eof_reached[(msg.topic(), msg.partition())] = False
         self._update_offset_from_message(msg)
         self._safe_call_and_set_status(self.on_message_received, msg)
 
@@ -137,20 +143,22 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         self._safe_call_and_set_status(self.on_error_received, msg)
 
     def _on_no_message_received(self):
+        if self.last_message is not None:
+            # last_message at this point only present if error code was _PARTITION_EOF
+            key = (self.last_message.topic(), self.last_message.partition())
+            self.eof_reached[key] = True
         self._safe_call_and_set_status(self.on_no_message_received)
 
     # internal functions with business logic
 
     def _update_offset_from_message(self, msg: Message):
         topic_partition = self._msg_to_topic_partition(msg)
+        topic_partition.offset += 1
         key = (topic_partition.topic, topic_partition.partition)
         self._offsets[key] = topic_partition
 
     def _msg_to_topic_partition(self, msg: Message) -> TopicPartition:
-        # TopicPartition may contain an offset so it can be used with
-        # consumer.commit, we need to add 1 so the consumer will continue
-        # on the NEXT message when it resumes
-        return TopicPartition(msg.topic(), msg.partition(), msg.offset() + 1)
+        return TopicPartition(msg.topic(), msg.partition(), msg.offset())
 
     def _run_once(self) -> None:
         try:
@@ -199,6 +207,14 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         offsets = list(self._offsets.values())
         self._consumer.commit(offsets=offsets)
 
+    def on_assign(self, _, partitions: List[TopicPartition]):
+        for partition in partitions:
+            self.eof_reached[(partition.topic, partition.partition)] = False
+
+    def on_revoke(self, _, partitions: List[TopicPartition]):
+        for partition in partitions:
+            del self.eof_reached[(partition.topic, partition.partition)]
+
     def _make_consumer(self) -> AvroConsumer:
         config = {
             "bootstrap.servers": ','.join(self.config['bootstrap_servers']),
@@ -209,9 +225,6 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             # to the sink
             "enable.auto.commit": False,
 
-            # One error less to worry about
-            "enable.partition.eof": False,
-
             # We need this to start at the last committed offset instead of the
             # latest when subscribing for the first time
             "default.topic.config": {
@@ -220,5 +233,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             **self.config['kafka_opts']
         }
         consumer = AvroConsumer(config)
-        consumer.subscribe(self.config['topics'])
+        # noinspection PyArgumentList
+        consumer.subscribe(self.config['topics'], on_assign=self.on_assign, on_revoke=self.on_revoke)
+
         return consumer
