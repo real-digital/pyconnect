@@ -25,6 +25,7 @@ pipeline:
       - pytest --run-e2e --doctest-modules
     when:
       branch: master
+      event: [ pull_request ]
 
   slack:
     image: plugins/slack
@@ -35,6 +36,7 @@ pipeline:
     when:
       status: [ success, failure ]
       branch: master
+      event: [ pull_request ]
     template: >
       {{#success build.status}}
         *success* {{build.link}} ({{build.branch}}) {{build.pull}} - (${PYTHON_VERSION})
@@ -55,6 +57,7 @@ services:
       - ZOOKEEPER_TICK_TIME=2000
     when:
       branch: master
+      event: [ pull_request ]
 
   broker:
     image: confluentinc/cp-kafka:5.0.0
@@ -73,6 +76,7 @@ services:
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
     when:
       branch: master
+      event: [ pull_request ]
 
   schema-registry:
     image: confluentinc/cp-schema-registry:5.0.0-beta30
@@ -88,6 +92,7 @@ services:
       - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
     when:
       branch: master
+      event: [ pull_request ]
 
   rest-proxy:
     image: confluentinc/cp-kafka-rest:latest
@@ -106,6 +111,7 @@ services:
       - KAFKA_REST_SCHEMA_REGISTRY_URL=http://schema-registry:8081
     when:
       branch: master
+      event: [ pull_request ]
 
 matrix:
   PYTHON_VERSION:
