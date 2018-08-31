@@ -28,8 +28,8 @@ pipeline:
 
   slack:
     image: plugins/slack
-    secrets: [ slack_token ]
-    webhook: https://hooks.slack.com/services/$${SLACK_TOKEN}
+    secrets: [ slack_webhook ]
+    webhook: ${SLACK_WEBHOOK}
     channel: shop-data-eng-ci
     username: drone
     when:
