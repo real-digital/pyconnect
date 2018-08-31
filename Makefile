@@ -41,10 +41,10 @@ shutdown-cluster:
 	)
 
 run-full-tests: boot-cluster
-	.venv/bin/python -m pytest --run-e2e
+	.venv/bin/python -m pytest --run-e2e --doctest-modules
 
 run-tests:
-	.venv/bin/python -m pytest
+	.venv/bin/python -m pytest --doctest-modules
 
 consume-%: boot-cluster
 	kafkacat -b broker:9092 -t $*
