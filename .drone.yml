@@ -34,12 +34,14 @@ pipeline:
     username: drone
     when:
       status: [ success, failure ]
+      branch: master
     template: >
       {{#success build.status}}
         *success* {{build.link}} ({{build.branch}}) {{build.pull}} - (${PYTHON_VERSION})
       {{else}}
         *failure* {{build.link}} ({{build.branch}}) {{build.pull}} - (${PYTHON_VERSION})
       {{/success}}
+      
 
 services:
   zookeeper:
