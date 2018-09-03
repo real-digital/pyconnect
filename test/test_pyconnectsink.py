@@ -1,14 +1,16 @@
+from typing import Callable, cast
 from unittest import mock
+
 import pytest
 
-from pyconnect.pyconnectsink import Status
 from pyconnect.config import SinkConfig
-
-
+from pyconnect.pyconnectsink import Status
 from test.utils import PyConnectTestSink, TestException
-
 # noinspection PyUnresolvedReferences
-from test.utils import failing_callback, message_factory, error_message_factory
+from test.utils import error_message_factory, failing_callback, message_factory
+
+
+SinkFactory = Callable[..., PyConnectTestSink]
 
 
 @pytest.fixture
@@ -32,13 +34,14 @@ def sink_factory():
 
 
 @pytest.fixture
-def run_once_sink(sink_factory):
+def run_once_sink(sink_factory: SinkFactory) -> PyConnectTestSink:
     sink = sink_factory()
     sink.forced_status_after_run = Status.STOPPED
+
     return sink
 
 
-def test_callbacks_are_called(sink_factory, message_factory, error_message_factory) -> None:
+def test_callbacks_are_called(sink_factory: SinkFactory, message_factory, error_message_factory) -> None:
     # setup
     connect_sink = sink_factory()
     patcher = mock.patch.multiple(
@@ -48,7 +51,7 @@ def test_callbacks_are_called(sink_factory, message_factory, error_message_facto
         need_flush=mock.Mock(return_value=True),
         on_flush=mock.Mock(return_value=None),
         on_error_received=mock.Mock(return_value=None),
-        on_crash=mock.Mock(return_value=None),
+        on_crash_during_run=mock.Mock(return_value=None),
         on_startup=mock.Mock(return_value=None),
         on_shutdown=mock.Mock(return_value=None)
     )
@@ -68,37 +71,39 @@ def test_callbacks_are_called(sink_factory, message_factory, error_message_facto
             TestException()]
 
     # perform
-    connect_sink.run()
+    with pytest.raises(TestException):
+        connect_sink.run()
 
     # test
-    assert connect_sink.on_startup.called
+    assert cast(mock.Mock, connect_sink.on_startup).called
 
-    assert connect_sink.on_message_received.called_with(msg)
-    assert connect_sink.need_flush.called
-    assert connect_sink.on_flush.called
-    assert connect_sink.on_no_message_received.called
-    assert connect_sink.on_error_received.called_with(error_msg)
-    assert connect_sink.on_crash.called
+    assert cast(mock.Mock, connect_sink.on_message_received).called_with(msg)
+    assert cast(mock.Mock, connect_sink.need_flush).called
+    assert cast(mock.Mock, connect_sink.on_flush).called
+    assert cast(mock.Mock, connect_sink.on_no_message_received).called
+    assert cast(mock.Mock, connect_sink.on_error_received).called_with(error_msg)
+    assert cast(mock.Mock, connect_sink.on_crash_during_run).called
 
-    assert connect_sink.on_shutdown.called
+    assert cast(mock.Mock, connect_sink.on_shutdown).called
 
 
-def test_no_commit_if_flush_failed(run_once_sink, failing_callback):
+def test_no_commit_if_flush_failed(run_once_sink: PyConnectTestSink, failing_callback: mock.Mock):
     # setup
     run_once_sink.need_flush = mock.Mock(return_value=True)
     run_once_sink.on_flush = failing_callback
 
-    # fail with status response
-
     # perform
-    run_once_sink.run()
+    try:
+        run_once_sink.run()
+    except TestException:
+        pass
 
     # test
-    assert run_once_sink.on_flush.called
-    assert not run_once_sink._consumer.commit.called
+    assert mock.Mock, run_once_sink.on_flush.called
+    assert not cast(mock.Mock, run_once_sink._consumer.commit).called
 
 
-def test_commit_after_flush(message_factory, run_once_sink):
+def test_commit_after_flush(message_factory, run_once_sink: PyConnectTestSink):
     # setup
     msg = message_factory()
     run_once_sink.need_flush = mock.Mock(return_value=True)
@@ -113,7 +118,7 @@ def test_commit_after_flush(message_factory, run_once_sink):
     assert run_once_sink._consumer.commit.called
 
 
-def test_last_message_is_set(message_factory, run_once_sink):
+def test_last_message_is_set(message_factory, run_once_sink: PyConnectTestSink):
     # setup
     msg = message_factory()
     run_once_sink._consumer.poll.return_value = msg
@@ -125,20 +130,21 @@ def test_last_message_is_set(message_factory, run_once_sink):
     assert run_once_sink.last_message is msg
 
 
-def test_last_message_is_unset(sink_factory, message_factory):
+def test_last_message_is_unset(sink_factory: SinkFactory, message_factory):
     # setup
     msg = message_factory()
     connect_sink = sink_factory()
     connect_sink._consumer.poll.side_effect = [msg, TestException()]
 
     # perform
-    connect_sink.run()
+    with pytest.raises(TestException):
+        connect_sink.run()
 
     # test
     assert connect_sink.last_message is None
 
 
-def test_status_info_is_set(sink_factory, message_factory):
+def test_status_info_is_set(sink_factory: SinkFactory, message_factory):
     # setup
     msg = message_factory()
     exception = TestException()
@@ -146,17 +152,18 @@ def test_status_info_is_set(sink_factory, message_factory):
     connect_sink._consumer.poll.side_effect = [msg, exception]
 
     # perform
-    connect_sink.run()
+    with pytest.raises(TestException):
+        connect_sink.run()
 
     # test
     assert connect_sink.status_info is exception
 
 
-def test_status_info_is_unset(sink_factory):
+def test_status_info_is_unset(sink_factory: SinkFactory):
     # setup
     connect_sink = sink_factory()
     connect_sink._consumer.poll.side_effect = [TestException(), None]
-    connect_sink.on_crash = mock.Mock(return_value=Status.RUNNING)
+    connect_sink.on_crash_during_run = mock.Mock(return_value=Status.RUNNING)
     connect_sink.forced_status_after_run = [None, Status.STOPPED]
 
     # perform
@@ -166,7 +173,7 @@ def test_status_info_is_unset(sink_factory):
     assert connect_sink.status_info is None
 
 
-def test_crash_handler_to_the_rescue(sink_factory, message_factory, failing_callback):
+def test_crash_handler_to_the_rescue(sink_factory: SinkFactory, message_factory, failing_callback):
     # Client libraries can implement a crash handling mechanism that allows the
     # consumer to recover from an exception.
 
@@ -178,7 +185,7 @@ def test_crash_handler_to_the_rescue(sink_factory, message_factory, failing_call
     connect_sink._consumer.poll.side_effect = [msg1, None, msg2]
     connect_sink.on_no_message_received = failing_callback
 
-    connect_sink.on_crash = mock.Mock(return_value=Status.RUNNING)
+    connect_sink.on_crash_during_run = mock.Mock(return_value=Status.RUNNING)
     connect_sink.on_message_received = mock.Mock(
         side_effect=[None, Status.STOPPED])
 
@@ -186,17 +193,17 @@ def test_crash_handler_to_the_rescue(sink_factory, message_factory, failing_call
     connect_sink.run()
 
     # test
-    connect_sink.on_crash.assert_called_once()
+    connect_sink.on_crash_during_run.assert_called_once()
     connect_sink.on_message_received.assert_has_calls([
         mock.call(msg1), mock.call(msg2)])
     assert connect_sink._status == Status.STOPPED
 
 
-def test_flush_if_needed(run_once_sink):
+def test_flush_if_needed(run_once_sink: PyConnectTestSink):
     run_once_sink.need_flush = mock.Mock(return_value=True)
 
-    # make sure on_final_flush doesn't call on_flush
-    run_once_sink.on_final_flush = mock.Mock(return_value=None)
+    # make sure on_shutdown doesn't call on_flush
+    run_once_sink.on_shutdown = mock.Mock(return_value=None)
     run_once_sink.on_flush = mock.Mock(return_value=None)
 
     run_once_sink.run()
@@ -204,11 +211,11 @@ def test_flush_if_needed(run_once_sink):
     run_once_sink.on_flush.assert_called_once()
 
 
-def test_no_flush_if_not_needed(run_once_sink):
+def test_no_flush_if_not_needed(run_once_sink: PyConnectTestSink):
     run_once_sink.need_flush = mock.Mock(return_value=False)
 
-    # make sure on_final_flush doesn't call on_flush
-    run_once_sink.on_final_flush = mock.Mock(return_value=None)
+    # make sure on_shutdown doesn't call on_flush
+    run_once_sink.on_shutdown = mock.Mock(return_value=None)
     run_once_sink.on_flush = mock.Mock(return_value=None)
 
     run_once_sink.run()
@@ -216,9 +223,9 @@ def test_no_flush_if_not_needed(run_once_sink):
     assert not run_once_sink.on_flush.called
 
 
-def test_on_final_flush_called(run_once_sink):
+def test_final_flush_called(run_once_sink: PyConnectTestSink):
     # setup
-    run_once_sink.on_final_flush = mock.Mock(return_value=None)
+    run_once_sink.on_flush = mock.Mock(return_value=None)
     # should be called even if flush_needed returns False
     run_once_sink.need_flush = mock.Mock(return_value=False)
 
@@ -226,24 +233,27 @@ def test_on_final_flush_called(run_once_sink):
     run_once_sink.run()
 
     # test
-    run_once_sink.on_final_flush.assert_called_once()
+    run_once_sink.on_flush.assert_called_once()
 
 
-def test_no_commit_if_final_flush_failed(run_once_sink, failing_callback):
+def test_no_commit_if_final_flush_failed(run_once_sink: PyConnectTestSink, failing_callback: mock.Mock):
     # setup
-    run_once_sink.on_final_flush = failing_callback
+    run_once_sink.on_flush = failing_callback
     # make sure standard flush is not called
     run_once_sink.need_flush = mock.Mock(return_value=False)
 
     # perform
-    run_once_sink.run()
+    try:
+        run_once_sink.run()
+    except TestException:
+        pass
 
     # test
-    run_once_sink.on_final_flush.assert_called_once()
-    assert not run_once_sink._consumer.commit.called
+    run_once_sink.on_flush.assert_called_once()
+    assert not cast(mock.Mock, run_once_sink._consumer.commit).called
 
 
-def test_flush_after_run(sink_factory, message_factory):
+def test_flush_after_run(sink_factory: SinkFactory, message_factory):
     # setup
     connect_sink = sink_factory()
     connect_sink._consumer.poll.side_effect = [message_factory()]*5 + [None]

@@ -3,7 +3,6 @@
 A Python implementation of "Kafka Connect"-like functionality that uses plain AvroConsumer/-Producers to make it easier to develop Kafka connect applications.
 
 ## TODOs
-* Write SourceConnector, currently only sinks are available
 * Flush consumer messages based on a timeout optionally
 * Provide runtime and examples that show how to run it in a dockerized environment
 * Add travis build process and mypy checking

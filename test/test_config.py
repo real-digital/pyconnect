@@ -1,9 +1,9 @@
-from pyconnect.config import _checkstr_to_checker, SanityError,\
-        BaseConfig, SinkConfig, csv_line_reader
-
 from inspect import signature
-import pytest
 import logging
+
+import pytest
+
+from pyconnect.config import BaseConfig, SanityError, SinkConfig, _checkstr_to_checker, csv_line_reader
 
 
 def test_checkstr_to_checker():
@@ -53,8 +53,7 @@ def test_checkstr_fails_on_malicious_code():
     # No Idea how this could possibly happen via a config file, but you
     # never know...
     with pytest.raises(Exception):
-        SmartInjector = type('SmartInjector', tuple(),
-                             {'__repr__': (lambda self: injection + '\n1')})
+        SmartInjector = type('SmartInjector', tuple(), {'__repr__': (lambda self: injection + '\n1')})
         checker({'value': SmartInjector()})
 
 

@@ -1,20 +1,24 @@
 from time import sleep
+from typing import Any, Callable, List, Tuple
 
-from confluent_kafka.avro import AvroConsumer
 from confluent_kafka import KafkaError
-
+from confluent_kafka.avro import AvroConsumer
 import pytest
 
 from pyconnect.config import SourceConfig
 from test.utils import PyConnectTestSource
-
-
 # noinspection PyUnresolvedReferences
 from test.utils import cluster_hosts, topic
 
 
+SourceFactory = Callable[..., PyConnectTestSource]
+
+
 @pytest.fixture
-def source_factory(topic, cluster_hosts):
+def source_factory(topic, cluster_hosts) -> SourceFactory:
+    """
+    Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSource`.
+    """
     topic_id, _ = topic
 
     config = SourceConfig(dict(
@@ -25,15 +29,22 @@ def source_factory(topic, cluster_hosts):
         topic=topic_id
     ))
 
-    def source_factory_():
+    def source_factory_() -> PyConnectTestSource:
         source = PyConnectTestSource(config)
         return source
 
     yield source_factory_
 
 
+Record = Tuple[Any, Any]
+RecordList = List[Record]
+ConsumeAll = Callable[..., RecordList]
+
 @pytest.fixture
-def consume_all(topic, cluster_hosts):
+def consume_all(topic, cluster_hosts) -> ConsumeAll:
+    """
+    Creates a function that consumes and returns all messages for the current test's topic.
+    """
     topic_id, _ = topic
 
     consumer = AvroConsumer({
@@ -47,7 +58,7 @@ def consume_all(topic, cluster_hosts):
     })
     consumer.subscribe([topic_id])
 
-    def consume_all_():
+    def consume_all_() -> RecordList:
         records = []
         while True:
             msg = consumer.poll(timeout=2)
@@ -64,7 +75,10 @@ def consume_all(topic, cluster_hosts):
 
 
 @pytest.fixture
-def records():
+def records() -> RecordList:
+    """
+    Just a list of simple records, ready to be used as messages.
+    """
     return [
         (1, 1),
         (2, 2),
@@ -75,7 +89,7 @@ def records():
 
 
 @pytest.mark.e2e
-def test_produce_messages(source_factory, records, consume_all):
+def test_produce_messages(source_factory: SourceFactory, records: RecordList, consume_all: ConsumeAll):
     source = source_factory().with_records(records)
 
     source.run()
@@ -87,7 +101,7 @@ def test_produce_messages(source_factory, records, consume_all):
 
 
 @pytest.mark.e2e
-def test_resume_producing(source_factory, consume_all):
+def test_resume_producing(source_factory: SourceFactory, consume_all: ConsumeAll):
     first_records = [(1, 1), (2, 2), (3, 3)]
     first_source = source_factory().with_records(first_records)
 
