@@ -24,9 +24,9 @@ pipeline:
       status: [ success, failure ]
     template: >
       {{#success build.status}}
-        :tada: {{build.link}} ({{build.branch}})
+        :tada: {{build.link}} ({{build.branch}}) - (Python ${PYTHON_VERSION})
       {{else}}
-        :facepalm: {{build.link}} ({{build.branch}})
+        :facepalm: {{build.link}} ({{build.branch}}) - (Python ${PYTHON_VERSION})
       {{/success}}
       
 
