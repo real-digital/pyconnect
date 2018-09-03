@@ -359,17 +359,30 @@ def cluster_hosts() -> Dict[str, str]:
                            'testenv-docker-compose.yml'), 'r') as infile:
         yml_config = yaml.load(infile)
 
-    hosts = {}
+    hosts = {
+        'broker': None,
+        'schema-registry': None,
+        'rest-proxy': None,
+        'zookeeper': None
+    }
+
     for service, conf in yml_config['services'].items():
         port = conf['ports'][0].split(':')[0]
         hosts[service] = f'{service}:{port}'
 
-    hosts['schema-registry'] = 'http://'+hosts['schema-registry']
-    hosts['rest-proxy'] = 'http://'+hosts['rest-proxy']
+    for service in hosts.keys():
+        env_var = service + '_url'
+        if env_var in os.environ:
+            hosts[service] = os.environ[env_var]
 
-    completed = subprocess.run(
-        ['curl', '-s', hosts['rest-proxy'] + "/topics"],
-        stdout=subprocess.DEVNULL)
+    if 'http' not in hosts['schema-registry']:
+        hosts['schema-registry'] = 'http://'+hosts['schema-registry']
+    if 'http' not in hosts['rest-proxy']:
+        hosts['rest-proxy'] = 'http://'+hosts['rest-proxy']
+
+    assert all(hosts.values()), 'Not all service urls have been defined!'
+
+    completed = subprocess.run(['curl', '-s', hosts['rest-proxy'] + "/topics"], stdout=subprocess.DEVNULL)
 
     if completed.returncode != 0:
         pytest.fail('Kafka Cluster is not running!')
