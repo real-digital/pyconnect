@@ -6,8 +6,9 @@ install-system-packages:
 	sudo apt-get install docker docker-compose kafkacat python-virtualenv python3.7 -y
 
 install-virtualenv:
-	[[ -d .venv ]] || virtualenv --python=3.7 ./.venv
+	[[ -d .venv ]] || virtualenv --python=3.6 ./.venv
 	./.venv/bin/python -m pip install -r requirements.txt
+	./.venv/bin/python -m pip install -e .
 
 install-hosts:
 	[[ -n "`cat /etc/hosts | grep __start_pyconnect__`" ]] || \

@@ -2,8 +2,9 @@ from setuptools import setup
 
 setup(
     name='pyconnect',
-    version='0.0.2',
+    version='0.0.3',
     packages=['pyconnect'],
+    package_dir={'': 'src'},
 
     # minimal requirements to run pyconnect
     install_requires=[

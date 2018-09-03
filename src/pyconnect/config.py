@@ -10,7 +10,7 @@ import logging
 import os
 from pathlib import Path
 import re
-from typing import Any, Callable, Dict, List, Pattern, Type, Union
+from typing import Callable, Dict, List, Pattern, Type, Union
 
 import yaml
 
@@ -76,10 +76,11 @@ def check_field_is_valid_url(field: str) -> SanityChecker:
     Meant for use in :attr:`pyconnect.config.BaseConfig.__sanity_checks`.
 
     >>> from pyconnect.config import check_field_matches_pattern
+    >>> from typing import cast
     >>> url_checker = check_field_is_valid_url('test')
-    >>> url_checker(dict(test='http://myurl.com'))
-    >>> url_checker(dict(test='user:password@some.other.url.com'))
-    >>> url_checker(dict(test='invalid_http://_url'))  # doctest: +IGNORE_EXCEPTION_DETAIL
+    >>> url_checker(cast(BaseConfig, dict(test='http://myurl.com')))
+    >>> url_checker(cast(BaseConfig, dict(test='user:password@some.other.url.com')))
+    >>> url_checker(cast(BaseConfig, dict(test='invalid_http://_url')))  # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
     ...
     pyconnect.config.SanityError: String 'invalid_http://_url' does not match (...)
@@ -88,14 +89,14 @@ def check_field_is_valid_url(field: str) -> SanityChecker:
     """
 
     pattern = re.compile(
-        r'^(?:(?:http|ftp)s?:\/\/)?'                       # protocol
+        r'^(?:(?:http|ftp)s?://)?'                       # protocol
         r'(?:\w+?:.+?@)?'                                  # user:password
         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+'  # domain...
         r'(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'             # ...
         r'[A-Z0-9\-]+|'                                    # host...
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'             # ...or ip
         r'(?::\d+)?'                                       # optional port
-        r'(?:/?|[\/?]\S+)$', re.IGNORECASE)                # path or params
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)                # path or params
     return check_field_matches_pattern(field, pattern)
 
 
@@ -106,10 +107,11 @@ def check_field_matches_pattern(field: str, pattern: Union[str, Pattern]) -> San
     Meant for use in :attr:`pyconnect.config.BaseConfig.__sanity_checks`.
 
     >>> from pyconnect.config import check_field_matches_pattern
+    >>> from typing import cast
     >>> pattern_checker = check_field_matches_pattern('test','^mypatternA?$')
-    >>> pattern_checker(dict(test='mypattern'))
-    >>> pattern_checker(dict(test='mypatternA'))
-    >>> pattern_checker(dict(test='mypatternB'))
+    >>> pattern_checker(cast(BaseConfig, dict(test='mypattern')))
+    >>> pattern_checker(cast(BaseConfig, dict(test='mypatternA')))
+    >>> pattern_checker(cast(BaseConfig, dict(test='mypatternB')))
     Traceback (most recent call last):
     ...
     pyconnect.config.SanityError: String 'mypatternB' does not match re.compile('^mypatternA?$')
@@ -150,16 +152,17 @@ def _checkstr_to_checker(sanity_check: str) -> SanityChecker:
     See :func:`pyconnect.config._validate_ast_tree`.
 
     >>> from pyconnect.config import _checkstr_to_checker
+    >>> from typing import cast
     >>> checker = _checkstr_to_checker('{timeout_ms} > 0')
-    >>> checker(dict(timeout_ms=10))
-    >>> checker(dict(timeout_ms=-1))
+    >>> checker(cast(BaseConfig, dict(timeout_ms=10)))
+    >>> checker(cast(BaseConfig, dict(timeout_ms=-1)))
     Traceback (most recent call last):
     ...
     pyconnect.config.SanityError: Sanity check '{timeout_ms} > 0' failed! Formatted expression: '-1 > 0'
 
     :param sanity_check: String defining sanity check.
     """
-    def checker(all_fields: Dict[str, Any]):
+    def checker(all_fields: BaseConfig) -> None:
         logger.debug(f'Validting fields using {sanity_check!r}')
         checker_expression = sanity_check.format(**{
             key: repr(value)
@@ -348,7 +351,7 @@ class BaseConfig(dict):
         """
         Find all classes that are parents of `type(self)` and subclasses of :class:`pyconnect.config.BaseConfig`.
         """
-        subclasses: List[type] = []
+        subclasses: List[Type['BaseConfig']] = []
         for cls in inspect.getmro(type(self)):
             if issubclass(cls, BaseConfig):
                 subclasses.append(cls)
