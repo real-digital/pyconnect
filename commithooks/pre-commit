@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+# flake 8 invocation
+python3 commithooks/pre-commit-flake.py | exit
