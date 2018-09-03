@@ -26,7 +26,7 @@ uninstall-hosts:
 	sudo sed -i /__start_pyconnect__/,/__stop_pyconnect__/d /etc/hosts
 
 
-install-dev-env: install-system-packages install-virtualenv install-hosts
+install-dev-env: install-system-packages install-virtualenv install-hosts install-hooks
 
 reset-cluster:
 	sudo docker-compose -f test/testenv-docker-compose.yml rm -f
