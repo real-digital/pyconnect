@@ -1,0 +1,6 @@
+[flake8]
+ignore = E999
+exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,*.pkl,*.json,*.csv,.venv,pre-commit
+max-line-length=119
+max-complexity=10
+import-order-style=edited

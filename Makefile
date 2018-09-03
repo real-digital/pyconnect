@@ -2,6 +2,15 @@ VERSION := 0.0.2
 GROUP := None
 SHELL = /bin/bash
 
+install-hooks:
+	pip3 install --user -r flake8-requirements.txt && \
+	pip3 install --user gitpython==2.1.10 && \
+	ln -sf ../../commithooks/pre-commit .git/hooks/pre-commit && \
+	ln -sf ../../commithooks/prepare-commit-msg .git/hooks/prepare-commit-msg && \
+	chmod +x .git/hooks/pre-commit && \
+	chmod +x .git/hooks/prepare-commit-msg && \
+	git config --bool flake8.strict true
+
 install-system-packages:
 	sudo apt-get install docker docker-compose kafkacat python-virtualenv python3.7 -y
 
@@ -17,7 +26,7 @@ uninstall-hosts:
 	sudo sed -i /__start_pyconnect__/,/__stop_pyconnect__/d /etc/hosts
 
 
-install-dev-env: install-system-packages install-virtualenv install-hosts
+install-dev-env: install-system-packages install-virtualenv install-hosts install-hooks
 
 reset-cluster:
 	sudo docker-compose -f test/testenv-docker-compose.yml rm -f

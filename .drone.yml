@@ -19,14 +19,14 @@ pipeline:
     secrets: [ slack_webhook ]
     webhook: ${SLACK_WEBHOOK}
     channel: shop-data-eng-ci
-    username: drone
+    username: ${CI_REPO_NAME}
     when:
       status: [ success, failure ]
     template: >
       {{#success build.status}}
-        *success* {{build.link}} ({{build.branch}}) {{build.pull}} - (${PYTHON_VERSION})
+        :tada: {{build.link}} ({{build.branch}}) - (Python ${PYTHON_VERSION})
       {{else}}
-        *failure* {{build.link}} ({{build.branch}}) {{build.pull}} - (${PYTHON_VERSION})
+        :facepalm: {{build.link}} ({{build.branch}}) - (Python ${PYTHON_VERSION})
       {{/success}}
       
 

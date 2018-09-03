@@ -1,0 +1,8 @@
+#!/bin/bash
+
+name=$(git branch | grep '*' | sed 's/* //')
+if ! [[ $( echo "$name" | egrep -i "^dev-[0-9]+") ]]; then
+  exit 0
+fi
+nameshort=$( echo "$name" | egrep -io "dev-[0-9]+")
+echo "$nameshort": "$(cat "$1")" > "$1"
