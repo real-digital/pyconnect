@@ -2,6 +2,15 @@ VERSION := 0.0.2
 GROUP := None
 SHELL = /bin/bash
 
+install-hooks:
+	pip3 install --user -r flake8-requirements.txt && \
+	pip3 install --user gitpython==2.1.10 && \
+	cp commithooks/pre-commit-hook .git/hooks/pre-commit && \
+	cp commithooks/prepare-commit-msg .git/hooks/prepare-commit-msg && \
+	chmod +x .git/hooks/pre-commit && \
+	chmod +x .git/hooks/prepare-commit-msg && \
+	git config --bool flake8.strict true
+
 install-system-packages:
 	sudo apt-get install docker docker-compose kafkacat python-virtualenv python3.7 -y
 

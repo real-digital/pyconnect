@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# flake 8 invocation
+python3 commithooks/pre-commit-hook-flake.py
+# exit on failure
+exit_code=$?
+if [[ ${exit_code} != 0 ]];
+	then exit ${exit_code};
+fi
