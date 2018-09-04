@@ -165,7 +165,7 @@ def _checkstr_to_checker(sanity_check: str) -> SanityChecker:
     def checker(all_fields: BaseConfig) -> None:
         logger.debug(f'Validting fields using {sanity_check!r}')
         checker_expression = sanity_check.format(**{
-            key: repr(value)
+            key: repr(value.total_seconds()) if isinstance(value, dt.timedelta) else repr(value)
             for key, value in all_fields.items()})
         logger.debug(f'Formatted expression is {checker_expression!r}')
 
@@ -429,7 +429,7 @@ class BaseConfig(dict):
 
         conf = {
             strip_prefix(key).lower(): value
-            for key, value in os.environ
+            for key, value in os.environ.items()
             if prefix in key.lower()
         }
 
