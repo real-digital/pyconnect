@@ -5,4 +5,8 @@ if ! [[ $( echo "$name" | egrep -i "^dev-[0-9]+") ]]; then
   exit 0
 fi
 nameshort=$( echo "$name" | egrep -io "dev-[0-9]+")
-echo "$nameshort": "$(cat "$1")" > "$1"
+
+# make sure $nameshort not already in commit message
+if [[ -z $(grep -F "$nameshort" $1) ]]; then
+  echo "$nameshort": "$(cat "$1")" > "$1"
+fi
