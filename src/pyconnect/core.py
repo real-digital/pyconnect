@@ -2,9 +2,9 @@
 This module contains central dependencies for all other modules such as base exceptions or base classes
 """
 
+import logging
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-import logging
 from typing import Any, Callable, Optional
 
 from confluent_kafka import KafkaException
@@ -53,7 +53,7 @@ class BaseConnector(metaclass=ABCMeta):
 
     def __init__(self) -> None:
         self._status = Status.NOT_YET_RUNNING
-        self._status_info = None
+        self._status_info: Any = None
 
     @property
     def is_running(self) -> bool:

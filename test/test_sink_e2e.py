@@ -1,17 +1,15 @@
-from functools import partial
 import os
 import random
 import subprocess
-from typing import Callable, List, Tuple
+from functools import partial
+from typing import Callable, Iterable, List, Tuple
 
-from confluent_kafka import avro as confluent_avro
 import pytest
+from confluent_kafka import avro as confluent_avro
 
 from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.config import SinkConfig
-from test.utils import CLI_DIR, PyConnectTestSink, TestException, rand_text
-# noinspection PyUnresolvedReferences
-from test.utils import cluster_hosts, topic
+from .utils import CLI_DIR, PyConnectTestSink, TestException, rand_text
 
 ConnectSinkFactory = Callable[..., PyConnectTestSink]
 
@@ -61,14 +59,14 @@ def plain_avro_producer(cluster_hosts, topic) -> confluent_avro.AvroProducer:
 
 
 @pytest.fixture
-def produced_messages(plain_avro_producer, topic, cluster_hosts) -> List[Tuple[str, dict]]:
+def produced_messages(plain_avro_producer, topic, cluster_hosts) -> Iterable[List[Tuple[str, dict]]]:
     """
     Creates 15 random messages, produces them to the currently active topic and then yields them for the test.
     """
     topic_id, partitions = topic
     messages = [
-            (rand_text(8), {'a': rand_text(64), 'b': random.randint(0, 1000)})
-            for _ in range(15)
+        (rand_text(8), {'a': rand_text(64), 'b': random.randint(0, 1000)})
+        for _ in range(15)
     ]
     key, value = messages[0]
     key_schema = to_key_schema(key)
@@ -89,7 +87,7 @@ def produced_messages(plain_avro_producer, topic, cluster_hosts) -> List[Tuple[s
 
     print(result.stdout.decode('utf-8'))
     if (result.stdout is None) or \
-            (not len(result.stdout.splitlines()) == partitions+1):
+            (not len(result.stdout.splitlines()) == partitions + 1):
         pytest.fail('not all partitions present!')
 
     yield messages

@@ -8,13 +8,13 @@ import inspect
 import json
 import logging
 import os
-from pathlib import Path
 import re
-from typing import Callable, Dict, List, Pattern, Type, Union
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Pattern, Type, Union
 
 import yaml
 
-from pyconnect.core import PyConnectException
+from .core import PyConnectException
 
 logger = logging.getLogger(__name__)
 
@@ -309,7 +309,7 @@ class BaseConfig(dict):
         'kafka_opts': json.loads
     }
 
-    def __init__(self, conf_dict: dict):
+    def __init__(self, conf_dict: Dict[str, Any]) -> None:
         super().__init__()
         self['bootstrap_servers'] = conf_dict.pop('bootstrap_servers')
         self['schema_registry'] = conf_dict.pop('schema_registry')
@@ -460,7 +460,7 @@ class SinkConfig(BaseConfig):
         '{poll_timeout}==-1 or {poll_timeout}>0'
     ]
 
-    def __init__(self, conf_dict):
+    def __init__(self, conf_dict: Dict[str, Any]) -> None:
         self['group_id'] = conf_dict.pop('group_id')
         self['topics'] = conf_dict.pop('topics')
         self['poll_timeout'] = conf_dict.pop('poll_timeout', 2)
@@ -479,7 +479,7 @@ class SourceConfig(BaseConfig):
             The kafka topic where this pyconnect source will safe its source offsets to.
     """
 
-    def __init__(self, conf_dict):
+    def __init__(self, conf_dict: Dict[str, Any]) -> None:
         self['topic'] = conf_dict.pop('topic')
         self['offset_topic'] = conf_dict.pop('offset_topic', '_pyconnect_offsets')
 

@@ -5,9 +5,9 @@ from typing import Any, Optional, Tuple
 from confluent_kafka.avro import AvroConsumer, AvroProducer
 from confluent_kafka.cimpl import KafkaError, OFFSET_END, TopicPartition
 
-from pyconnect.avroparser import to_key_schema, to_value_schema
-from pyconnect.config import SourceConfig
-from pyconnect.core import BaseConnector, PyConnectException, Status
+from .avroparser import to_key_schema, to_value_schema
+from .config import SourceConfig
+from .core import BaseConnector, PyConnectException, Status
 
 
 class PyConnectSource(BaseConnector, metaclass=ABCMeta):
@@ -23,9 +23,9 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         self.config = config
         self._producer = self._make_producer()
         self._offset_consumer = self._make_offset_consumer()
-        self._key_schema: str = None
-        self._value_schema: str = None
-        self._offset_schema: str = None
+        self._key_schema: Optional[str] = None
+        self._value_schema: Optional[str] = None
+        self._offset_schema: Optional[str] = None
 
     def _make_producer(self) -> AvroProducer:
         """

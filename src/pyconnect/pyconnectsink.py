@@ -1,14 +1,14 @@
+import logging
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-import logging
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError
 
-from pyconnect.config import SinkConfig
-from pyconnect.core import BaseConnector, Status
+from .config import SinkConfig
+from .core import BaseConnector, Status
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +154,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _update_offset_from_message(self, msg: Message):
         """
-        Takes a message and updates the cached offset information with it so offsets are up to date when we commit them.
+        Takes a message and updates the cached offset information with it so offsets are up to date when
+        we commit them.
         """
         topic_partition = msg_to_topic_partition(msg)
         topic_partition.offset += 1

@@ -1,21 +1,18 @@
 from time import sleep
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, Iterable, List, Tuple
 
-from confluent_kafka import KafkaError
-from confluent_kafka.avro import AvroConsumer
 import pytest
+from confluent_kafka.avro import AvroConsumer
+from confluent_kafka.cimpl import KafkaError
 
 from pyconnect.config import SourceConfig
-from test.utils import PyConnectTestSource
-# noinspection PyUnresolvedReferences
-from test.utils import cluster_hosts, topic
-
+from .utils import PyConnectTestSource
 
 SourceFactory = Callable[..., PyConnectTestSource]
 
 
 @pytest.fixture
-def source_factory(topic, cluster_hosts) -> SourceFactory:
+def source_factory(topic, cluster_hosts) -> Iterable[SourceFactory]:
     """
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSource`.
     """
@@ -40,8 +37,9 @@ Record = Tuple[Any, Any]
 RecordList = List[Record]
 ConsumeAll = Callable[..., RecordList]
 
+
 @pytest.fixture
-def consume_all(topic, cluster_hosts) -> ConsumeAll:
+def consume_all(topic, cluster_hosts) -> Iterable[ConsumeAll]:
     """
     Creates a function that consumes and returns all messages for the current test's topic.
     """
@@ -49,7 +47,7 @@ def consume_all(topic, cluster_hosts) -> ConsumeAll:
 
     consumer = AvroConsumer({
         'bootstrap.servers': cluster_hosts['broker'],
-        'schema.registry.url':  cluster_hosts['schema-registry'],
+        'schema.registry.url': cluster_hosts['schema-registry'],
         'group.id': f'{topic_id}_consumer',
         'enable.partition.eof': False,
         "default.topic.config": {
