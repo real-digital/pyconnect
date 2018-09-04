@@ -69,8 +69,9 @@ check-offsets: boot-cluster
 	test/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
 
 publish-test:
-	python setup.py sdist
-	twine upload dist/* -r testpypi
+	rm -rf dist
+	python setup.py sdist bdist_wheel
+	twine upload dist/* --repository-url https://test.pypi.org/legacy/
 
 publish: publish-test
 	twine upload dist/*
