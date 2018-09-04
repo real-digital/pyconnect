@@ -2,8 +2,8 @@ pipeline:
   build:
     image: python:${PYTHON_VERSION}-stretch
     commands:
-      - python -m venv venv_test
-      - . venv_test/bin/activate
+      - python -m venv .venv
+      - . .venv/bin/activate
       - pip install -r requirements.txt
       - pip install -r flake8-requirements.txt
       - pip install -e .
@@ -13,7 +13,7 @@ pipeline:
     commands:
       - apt-get update
       - apt-get install -yq --no-install-recommends openjdk-8-jre
-      - . venv_test/bin/activate
+      - . .venv/bin/activate
       - pytest --run-e2e --doctest-modules
       - flake8
 
