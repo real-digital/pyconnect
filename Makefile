@@ -2,9 +2,10 @@ VERSION := 0.0.2
 GROUP := None
 SHELL = /bin/bash
 
-install-hooks:
-	pip3 install --user -r flake8-requirements.txt && \
-	pip3 install --user gitpython==2.1.10 && \
+install-hooks: install-virtualenv
+	. .venv/bin/activate && \
+	pip3 install -r flake8-requirements.txt && \
+	pip3 install gitpython==2.1.10 && \
 	ln -sf ../../commithooks/pre-commit .git/hooks/pre-commit && \
 	ln -sf ../../commithooks/prepare-commit-msg .git/hooks/prepare-commit-msg && \
 	chmod +x .git/hooks/pre-commit && \
