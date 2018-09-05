@@ -41,7 +41,9 @@ def test_produce_messages(source_factory: SourceFactory, records: RecordList, co
     sleep(1)
     consumed_records = consume_all()
 
-    assert set(records) == set(consumed_records)
+    assert len(consumed_records) == len(records)
+    for consumed_record in consumed_records:
+        assert consumed_record in records
 
 
 @pytest.mark.e2e
