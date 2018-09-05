@@ -481,6 +481,6 @@ class SourceConfig(BaseConfig):
 
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
         self['topic'] = conf_dict.pop('topic')
-        self['offset_topic'] = conf_dict.pop('offset_topic', '_pyconnect_offsets')
+        self['offset_topic'] = conf_dict.pop('offset_topic')
 
         super().__init__(conf_dict)
