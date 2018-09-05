@@ -155,6 +155,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         sleep(0.1)
 
     def close(self) -> None:
+        # TODO this is important! Don't let subclasses overwrite it.
         try:
             self._commit()
             self._offset_consumer.close()

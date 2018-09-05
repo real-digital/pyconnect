@@ -13,11 +13,12 @@ import pytest
 from confluent_kafka.cimpl import Message
 
 from pyconnect.config import SourceConfig
-from pyconnect.core import BaseConnector, Status
+from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
 from pyconnect.pyconnectsource import PyConnectSource
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(TEST_DIR, '..'))
 CLI_DIR = os.path.join(TEST_DIR, 'kafka', 'bin')
 
 
@@ -33,7 +34,7 @@ class TestException(Exception):
 
 
 # noinspection PyAttributeOutsideInit
-class ConnectTestMixin(BaseConnector):
+class ConnectTestMixin:
     """
     Mixin class meant to stand between connector's abstract class and its implementing class. It will intercept
     or wrap some methods so we can cause certain behaviour and can make sure not to end in an endless loop.

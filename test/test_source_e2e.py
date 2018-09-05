@@ -1,11 +1,10 @@
 from time import sleep
-from typing import Any, Callable, Iterable, List, Tuple
+from typing import Callable, Iterable
 
 import pytest
-from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.cimpl import KafkaError
 
 from pyconnect.config import SourceConfig
+from test.conftest import ConsumeAll, RecordList
 from .utils import PyConnectTestSource
 
 SourceFactory = Callable[..., PyConnectTestSource]
@@ -31,59 +30,6 @@ def source_factory(topic, cluster_hosts) -> Iterable[SourceFactory]:
         return source
 
     yield source_factory_
-
-
-Record = Tuple[Any, Any]
-RecordList = List[Record]
-ConsumeAll = Callable[..., RecordList]
-
-
-@pytest.fixture
-def consume_all(topic, cluster_hosts) -> Iterable[ConsumeAll]:
-    """
-    Creates a function that consumes and returns all messages for the current test's topic.
-    """
-    topic_id, _ = topic
-
-    consumer = AvroConsumer({
-        'bootstrap.servers': cluster_hosts['broker'],
-        'schema.registry.url': cluster_hosts['schema-registry'],
-        'group.id': f'{topic_id}_consumer',
-        'enable.partition.eof': False,
-        "default.topic.config": {
-            "auto.offset.reset": "earliest"
-        }
-    })
-    consumer.subscribe([topic_id])
-
-    def consume_all_() -> RecordList:
-        records = []
-        while True:
-            msg = consumer.poll(timeout=2)
-            if msg is None:
-                break
-            if msg.error() is not None:
-                assert msg.error().code() == KafkaError._PARTITION_EOF
-                break
-            records.append((msg.key(), msg.value()))
-        return records
-
-    yield consume_all_
-    consumer.close()
-
-
-@pytest.fixture
-def records() -> RecordList:
-    """
-    Just a list of simple records, ready to be used as messages.
-    """
-    return [
-        (1, 1),
-        (2, 2),
-        (3, 3),
-        (4, 4),
-        (5, 5)
-    ]
 
 
 @pytest.mark.e2e

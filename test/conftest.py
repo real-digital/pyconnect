@@ -1,13 +1,18 @@
 import itertools as it
 import os
+import random
 import subprocess
-from typing import Callable, Dict, Iterable, Tuple
+from functools import partial
+from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
 import pytest
 import yaml
+from confluent_kafka import avro as confluent_avro
+from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError, Message
 
+from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.core import Status
 from test.utils import CLI_DIR, TEST_DIR, TestException, rand_text
 
@@ -115,6 +120,55 @@ def topic(request, cluster_hosts) -> Iterable[Tuple[str, int]]:
 
 
 @pytest.fixture
+def plain_avro_producer(cluster_hosts, topic) -> confluent_avro.AvroProducer:
+    """
+    Creates a plain `confluent_kafka.avro.AvroProducer` that can be used to publish messages.
+    """
+    topic_id, partitions = topic
+    producer_config = {
+        'bootstrap.servers': cluster_hosts['broker'],
+        'schema.registry.url': cluster_hosts['schema-registry'],
+        'group.id': topic_id + '_plain_producer_group_id'  # no idea what this does...
+    }
+    producer = confluent_avro.AvroProducer(producer_config)
+    producer.produce = partial(producer.produce, topic=topic_id)
+
+    return producer
+
+
+@pytest.fixture
+def produced_messages(records, plain_avro_producer, topic, cluster_hosts) -> Iterable[List[Tuple[str, dict]]]:
+    """
+    Creates 15 random messages, produces them to the currently active topic and then yields them for the test.
+    """
+    topic_id, partitions = topic
+
+    key, value = records[0]
+    key_schema = to_key_schema(key)
+    value_schema = to_value_schema(value)
+
+    for key, value in records:
+        plain_avro_producer.produce(
+            key=key, value=value,
+            key_schema=key_schema, value_schema=value_schema)
+
+    plain_avro_producer.flush()
+
+    result = subprocess.run([
+        os.path.join(CLI_DIR, 'kafka-topics.sh'),
+        '--zookeeper', cluster_hosts['zookeeper'],
+        '--describe', '--topic', topic_id
+    ], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    print(result.stdout.decode('utf-8'))
+    if (result.stdout is None) or \
+            (not len(result.stdout.splitlines()) == partitions + 1):
+        pytest.fail('not all partitions present!')
+
+    yield records
+
+
+@pytest.fixture
 def message_factory() -> Iterable[Callable[..., Message]]:
     """
     Creates a factory for mocked :class:`confluent_kafka.Message` object.
@@ -155,3 +209,53 @@ def eof_message(error_message_factory) -> Message:
     :const:`confluent_kafka.KafkaError._PARTITION_EOF`.
     """
     return error_message_factory(error_code=KafkaError._PARTITION_EOF)
+
+
+Record = Tuple[Any, Any]
+RecordList = List[Record]
+ConsumeAll = Callable[..., RecordList]
+
+
+@pytest.fixture
+def records() -> RecordList:
+    """
+    Just a list of simple records, ready to be used as messages.
+    """
+    return [
+        (rand_text(8), {'a': rand_text(64), 'b': random.randint(0, 1000)})
+        for _ in range(15)
+    ]
+
+
+@pytest.fixture
+def consume_all(topic, cluster_hosts) -> Iterable[ConsumeAll]:
+    """
+    Creates a function that consumes and returns all messages for the current test's topic.
+    """
+    topic_id, _ = topic
+
+    consumer = AvroConsumer({
+        'bootstrap.servers': cluster_hosts['broker'],
+        'schema.registry.url': cluster_hosts['schema-registry'],
+        'group.id': f'{topic_id}_consumer',
+        'enable.partition.eof': False,
+        "default.topic.config": {
+            "auto.offset.reset": "earliest"
+        }
+    })
+    consumer.subscribe([topic_id])
+
+    def consume_all_() -> RecordList:
+        records = []
+        while True:
+            msg = consumer.poll(timeout=2)
+            if msg is None:
+                break
+            if msg.error() is not None:
+                assert msg.error().code() == KafkaError._PARTITION_EOF
+                break
+            records.append((msg.key(), msg.value()))
+        return records
+
+    yield consume_all_
+    consumer.close()

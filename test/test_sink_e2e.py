@@ -1,15 +1,9 @@
-import os
-import random
-import subprocess
-from functools import partial
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable
 
 import pytest
-from confluent_kafka import avro as confluent_avro
 
-from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.config import SinkConfig
-from .utils import CLI_DIR, PyConnectTestSink, TestException, rand_text
+from .utils import PyConnectTestSink, TestException
 
 ConnectSinkFactory = Callable[..., PyConnectTestSink]
 
@@ -39,58 +33,6 @@ def connect_sink_factory(cluster_hosts, topic) -> ConnectSinkFactory:
             config = sink_config
         return PyConnectTestSink(config)
     return connect_sink_factory_
-
-
-@pytest.fixture
-def plain_avro_producer(cluster_hosts, topic) -> confluent_avro.AvroProducer:
-    """
-    Creates a plain `confluent_kafka.avro.AvroProducer` that can be used to publish messages.
-    """
-    topic_id, partitions = topic
-    producer_config = {
-        'bootstrap.servers': cluster_hosts['broker'],
-        'schema.registry.url': cluster_hosts['schema-registry'],
-        'group.id': topic_id + '_plain_producer_group_id'  # no idea what this does...
-    }
-    producer = confluent_avro.AvroProducer(producer_config)
-    producer.produce = partial(producer.produce, topic=topic_id)
-
-    return producer
-
-
-@pytest.fixture
-def produced_messages(plain_avro_producer, topic, cluster_hosts) -> Iterable[List[Tuple[str, dict]]]:
-    """
-    Creates 15 random messages, produces them to the currently active topic and then yields them for the test.
-    """
-    topic_id, partitions = topic
-    messages = [
-        (rand_text(8), {'a': rand_text(64), 'b': random.randint(0, 1000)})
-        for _ in range(15)
-    ]
-    key, value = messages[0]
-    key_schema = to_key_schema(key)
-    value_schema = to_value_schema(value)
-
-    for key, value in messages:
-        plain_avro_producer.produce(
-            key=key, value=value,
-            key_schema=key_schema, value_schema=value_schema)
-
-    plain_avro_producer.flush()
-
-    result = subprocess.run([
-        os.path.join(CLI_DIR, 'kafka-topics.sh'),
-        '--zookeeper', cluster_hosts['zookeeper'],
-        '--describe', '--topic', topic_id
-    ], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-
-    print(result.stdout.decode('utf-8'))
-    if (result.stdout is None) or \
-            (not len(result.stdout.splitlines()) == partitions + 1):
-        pytest.fail('not all partitions present!')
-
-    yield messages
 
 
 @pytest.mark.e2e
