@@ -1,7 +1,7 @@
 """
 This module contains utility functions and classes for testing.
 """
-import os
+import pathlib
 import random
 import string
 import subprocess
@@ -17,9 +17,9 @@ from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
 from pyconnect.pyconnectsource import PyConnectSource
 
-TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-ROOT_DIR = os.path.abspath(os.path.join(TEST_DIR, '..'))
-CLI_DIR = os.path.join(TEST_DIR, 'kafka', 'bin')
+TEST_DIR = pathlib.Path(__file__).parent.absolute()
+ROOT_DIR = TEST_DIR.parent
+CLI_DIR = TEST_DIR / 'kafka' / 'bin'
 
 
 class TestException(Exception):
@@ -278,7 +278,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         """
         print('Kafka consumer group status:')
         subprocess.call([
-            os.path.join(CLI_DIR, 'kafka-consumer-groups.sh'),
+            CLI_DIR / 'kafka-consumer-groups.sh',
             '--bootstrap-server', self.config['bootstrap_servers'][0],
             '--describe', '--group', self.config['group_id'],
             '--offsets', '--verbose'

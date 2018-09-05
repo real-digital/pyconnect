@@ -1,5 +1,5 @@
 import json
-import os
+import pathlib
 import shutil
 import subprocess
 import sys
@@ -8,7 +8,7 @@ import pytest
 
 from .utils import ROOT_DIR
 
-EXAMPLES_DIR = os.path.join(ROOT_DIR, 'examples')
+EXAMPLES_DIR = ROOT_DIR / 'examples'
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def tmp_with_pyconnect(tmpdir):
     python = f'python{sys.version_info.major}.{sys.version_info.minor}'
     subprocess.run(['virtualenv', f'--python={python}', '.test_venv'], cwd=tmpdir, check=True)
     subprocess.run(['.test_venv/bin/pip', 'install', ROOT_DIR], cwd=tmpdir, check=True)
-    return tmpdir
+    return pathlib.Path(tmpdir)
 
 
 @pytest.mark.e2e
@@ -30,7 +30,7 @@ def test_file_sink_example(cluster_hosts, topic, produced_messages, tmp_with_pyc
         'PYCONNECT_SINK_FILENAME': 'sinkfile'
     }
 
-    shutil.copy(os.path.join(EXAMPLES_DIR, 'file_sink', 'file_sink.py'), tmp_with_pyconnect)
+    shutil.copy(EXAMPLES_DIR / 'file_sink' / 'file_sink.py', tmp_with_pyconnect)
     subprocess.run(['.test_venv/bin/python', 'file_sink.py', '--config', 'env'], env=env_vars,
                    cwd=tmp_with_pyconnect, check=True)
 
@@ -55,12 +55,12 @@ def test_file_source_example(records, cluster_hosts, topic, consume_all, tmp_wit
         'PYCONNECT_SOURCE_FILENAME': 'sourcefile'
     }
 
-    os.makedirs(source_dir)
+    source_dir.mkdir(parents=True, exist_ok=True)
     with open(source_dir / 'sourcefile', 'w') as outfile:
         for key, value in records:
             outfile.write(json.dumps({'key': key, 'value': value}) + '\n')
 
-    shutil.copy(os.path.join(EXAMPLES_DIR, 'file_source', 'file_source.py'), tmp_with_pyconnect)
+    shutil.copy(EXAMPLES_DIR / 'file_source' / 'file_source.py', tmp_with_pyconnect)
     subprocess.run(['.test_venv/bin/python', 'file_source.py', '--config', 'env'], env=env_vars,
                    cwd=tmp_with_pyconnect, check=True)
 

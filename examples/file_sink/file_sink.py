@@ -1,6 +1,6 @@
 import json
-import os
-from typing import List
+import pathlib
+from typing import List, cast
 
 from confluent_kafka.cimpl import Message
 
@@ -12,12 +12,13 @@ class FileSinkConfig(SinkConfig):
     """
     In addition to the fields from :class:`pyconnect.config.SinkConfig` this class provides the following fields:
 
-        **sink_directory**: str
+        **sink_directory**: :class:`pathlib.Path`
             The directory where this sink shall put the file it writes all messages to.
 
         **sink_filename**: str
             The name of the file that this sink writes all messages to.
     """
+    __parsers = {'sink_directory': lambda p: pathlib.Path(p).absolute()}
 
     def __init__(self, conf_dict):
         conf_dict = conf_dict.copy()
@@ -39,11 +40,7 @@ class FileSink(PyConnectSink):
         self._buffer.append(msg)
 
     def on_startup(self):
-        sink_dir = os.path.abspath(self.config['sink_directory'])
-        if not os.path.exists(sink_dir):
-            os.makedirs(sink_dir)
-        elif not os.path.isdir(sink_dir):
-            raise RuntimeError(f'Sink directory {sink_dir!r} exists and is not a directory!')
+        cast(pathlib.Path, self.config['sink_directory']).mkdir(parents=True, exist_ok=True)
 
     def on_flush(self) -> None:
         lines = [

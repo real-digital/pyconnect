@@ -1,5 +1,5 @@
 import json
-import os
+import pathlib
 from typing import Any, Optional, TextIO, Tuple
 
 from pyconnect import PyConnectSource, SourceConfig
@@ -10,13 +10,15 @@ class FileSourceConfig(SourceConfig):
     """
     In addition to the fields from :class:`pyconnect.config.SourceConfig` this class provides the following fields:
 
-        **source_directory**: str
+        **source_directory**: :class:`pathlib.Path`
             The directory where this source looks for the file it reads all messages from.
 
         **source_filename**: str
             The name of the file that this source reads messages from.
             The file should contain lines of json objects like `{'key': Any, 'value': Any}`
     """
+
+    __parsers = {'source_directory': lambda p: pathlib.Path(p).absolute()}
 
     def __init__(self, conf_dict):
         conf_dict = conf_dict.copy()
@@ -34,7 +36,7 @@ class FileSource(PyConnectSource):
         self._file: Optional[TextIO] = None
 
     def on_startup(self):
-        source_path = os.path.abspath(os.path.join(self.config['source_directory'], self.config['source_filename']))
+        source_path = self.config['source_directory'] / self.config['source_filename']
         self._file = open(source_path, 'r')
 
     def seek(self, index: int) -> None:

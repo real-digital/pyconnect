@@ -53,8 +53,7 @@ def cluster_hosts() -> Dict[str, str]:
     for the kafka cluster.
     :return: A map from service to url.
     """
-    with open(os.path.join(TEST_DIR,
-                           'testenv-docker-compose.yml'), 'r') as infile:
+    with open(TEST_DIR / 'testenv-docker-compose.yml', 'r') as infile:
         yml_config = yaml.load(infile)
 
     hosts = {
@@ -103,7 +102,7 @@ def topic(request, cluster_hosts) -> Iterable[Tuple[str, int]]:
     partitions = request.param
 
     subprocess.call([
-        os.path.join(CLI_DIR, 'kafka-topics.sh'),
+        CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', cluster_hosts['zookeeper'],
         '--create', '--topic', topic_id,
         '--partitions', str(partitions),
@@ -113,7 +112,7 @@ def topic(request, cluster_hosts) -> Iterable[Tuple[str, int]]:
     yield (topic_id, partitions)
 
     subprocess.call([
-        os.path.join(CLI_DIR, 'kafka-topics.sh'),
+        CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', cluster_hosts['zookeeper'],
         '--describe', '--topic', topic_id
     ])
@@ -155,7 +154,7 @@ def produced_messages(records, plain_avro_producer, topic, cluster_hosts) -> Ite
     plain_avro_producer.flush()
 
     result = subprocess.run([
-        os.path.join(CLI_DIR, 'kafka-topics.sh'),
+        CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', cluster_hosts['zookeeper'],
         '--describe', '--topic', topic_id
     ], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
