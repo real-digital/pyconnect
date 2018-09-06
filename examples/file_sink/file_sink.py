@@ -65,7 +65,8 @@ class FileSink(PyConnectSink):
         self._buffer.clear()
 
     def on_no_message_received(self):
-        if all(self.eof_reached.values()):
+        # TODO the following should probably be two attributes like 'has_subscriptions' and 'all_partitions_at_eof'
+        if len(self.eof_reached) > 0 and all(self.eof_reached.values()):
             logger.info('EOF reached, stopping.')
             return Status.STOPPED
         return None
