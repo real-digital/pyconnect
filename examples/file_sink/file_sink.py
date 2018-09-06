@@ -1,4 +1,5 @@
 import json
+import logging
 import pathlib
 from typing import List, cast
 
@@ -6,6 +7,8 @@ from confluent_kafka.cimpl import Message
 
 from pyconnect import PyConnectSink, SinkConfig
 from pyconnect.core import Status
+
+logger = logging.getLogger(__name__)
 
 
 class FileSinkConfig(SinkConfig):
@@ -25,6 +28,7 @@ class FileSinkConfig(SinkConfig):
         self['sink_directory'] = conf_dict.pop('sink_directory')
         self['sink_filename'] = conf_dict.pop('sink_filename')
         super().__init__(conf_dict)
+        logger.debug(f'Configuration: {self!r}')
 
 
 class FileSink(PyConnectSink):
@@ -37,9 +41,11 @@ class FileSink(PyConnectSink):
         self._buffer: List[Message] = []
 
     def on_message_received(self, msg: Message) -> None:
+        logger.debug(f'Message Received: {msg!r}')
         self._buffer.append(msg)
 
     def on_startup(self):
+        logger.debug(f'Creating parent directory: {self.config["sink_directory"]}')
         cast(pathlib.Path, self.config['sink_directory']).mkdir(parents=True, exist_ok=True)
 
     def on_flush(self) -> None:
@@ -47,19 +53,26 @@ class FileSink(PyConnectSink):
             json.dumps({'key': msg.key(), 'value': msg.value()}) + '\n'
             for msg in self._buffer
         ]
-
-        with open('{sink_directory}/{sink_filename}'.format(**self.config), 'a') as outfile:
+        sinkfile = self.config['sink_directory'] / self.config['sink_filename']
+        logger.info(f'Writing {len(lines)} line(s) to {sinkfile}')
+        with open(sinkfile, 'a') as outfile:
             outfile.writelines(lines)
+
+        logger.debug('The following lines were written:')
+        for line in lines:
+            logger.debug(f'> {line!r}')
 
         self._buffer.clear()
 
     def on_no_message_received(self):
         if all(self.eof_reached.values()):
+            logger.info('EOF reached, stopping.')
             return Status.STOPPED
         return None
 
 
 def main():
+    # TODO move to pyconnect.core.main(connector_cls, config_cls)
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -68,9 +81,25 @@ def main():
     parser.add_argument('--conf_file', default=None, help='When `conf` is yaml or json, then config is loaded'
                                                           'from this file, default will be `./config.(yaml|json)` '
                                                           'depending on which kind of file you chose')
+    parser.add_argument('--loglevel', choices=['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                        help='Set log level to given value, if "NOTSET" (default) no logging is active.',
+                        default='NOTSET')
 
     args = parser.parse_args()
     config: FileSinkConfig = None
+
+    if args.loglevel != 'NOTSET':
+        base_logger = logging.getLogger()
+        loglevel = getattr(logging, args.loglevel)
+
+        formatter = logging.Formatter('%(levelname)-8s - %(name)-12s - %(message)s')
+
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(loglevel)
+        stream_handler.setFormatter(formatter)
+
+        base_logger.setLevel(loglevel)
+        base_logger.addHandler(stream_handler)
 
     if args.config == 'env':
         config = FileSinkConfig.from_env_variables()

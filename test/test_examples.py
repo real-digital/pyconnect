@@ -38,7 +38,7 @@ def test_file_sink_example(cluster_hosts, topic, produced_messages, tmp_with_pyc
 
     shutil.copy(EXAMPLES_DIR / 'file_sink' / 'file_sink.py', tmpdir)
 
-    subprocess.run([venv_bin / 'python', 'file_sink.py', '--config', 'env'], env=env_vars,
+    subprocess.run([venv_bin / 'python', 'file_sink.py', '--config', 'env', '--loglevel', 'DEBUG'], env=env_vars,
                    cwd=tmpdir, check=True)
 
     filedata = sinkfile.read_text()
@@ -72,7 +72,7 @@ def test_file_source_example(records, cluster_hosts, topic, consume_all, tmp_wit
     source_file.write_text(source_data)
 
     shutil.copy(EXAMPLES_DIR / 'file_source' / 'file_source.py', tmpdir)
-    subprocess.run([venv_bin / 'python', 'file_source.py', '--config', 'env'], env=env_vars,
+    subprocess.run([venv_bin / 'python', 'file_source.py', '--config', 'env', '--loglevel', 'DEBUG'], env=env_vars,
                    cwd=tmpdir, check=True)
 
     published_records = consume_all()

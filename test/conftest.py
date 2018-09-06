@@ -136,7 +136,8 @@ def plain_avro_producer(cluster_hosts, topic) -> confluent_avro.AvroProducer:
 
 
 @pytest.fixture
-def produced_messages(records, plain_avro_producer, topic, cluster_hosts) -> Iterable[List[Tuple[str, dict]]]:
+def produced_messages(records, plain_avro_producer, topic, cluster_hosts,
+                      consume_all) -> Iterable[List[Tuple[str, dict]]]:
     """
     Creates 15 random messages, produces them to the currently active topic and then yields them for the test.
     """
@@ -147,22 +148,16 @@ def produced_messages(records, plain_avro_producer, topic, cluster_hosts) -> Ite
     value_schema = to_value_schema(value)
 
     for key, value in records:
-        plain_avro_producer.produce(
-            key=key, value=value,
-            key_schema=key_schema, value_schema=value_schema)
+        plain_avro_producer.produce(key=key, value=value, key_schema=key_schema, value_schema=value_schema)
 
     plain_avro_producer.flush()
 
-    result = subprocess.run([
-        CLI_DIR / 'kafka-topics.sh',
-        '--zookeeper', cluster_hosts['zookeeper'],
-        '--describe', '--topic', topic_id
-    ], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-
-    print(result.stdout.decode('utf-8'))
-    if (result.stdout is None) or \
-            (not len(result.stdout.splitlines()) == partitions + 1):
-        pytest.fail('not all partitions present!')
+    topic_highwater = subprocess.run([CLI_DIR / 'kafka-run-class.sh', 'kafka.tools.GetOffsetShell',
+                                      '--broker-list', cluster_hosts['broker'], '--topic', topic_id,
+                                      '--time', '-1', '--offsets', '1'],
+                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout
+    print(topic_highwater)
+    assert len(topic_highwater.splitlines()) == partitions, 'Not all partitions present'
 
     yield records
 

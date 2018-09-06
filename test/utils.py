@@ -13,7 +13,7 @@ import pytest
 from confluent_kafka.cimpl import Message
 
 from pyconnect.config import SourceConfig
-from pyconnect.core import Status
+from pyconnect.core import Status, message_repr
 from pyconnect.pyconnectsink import PyConnectSink
 from pyconnect.pyconnectsource import PyConnectSource
 
@@ -320,16 +320,3 @@ def rand_text(textlen: int) -> str:
     :return: Random string.
     """
     return ''.join(random.choices(string.ascii_uppercase, k=textlen))
-
-
-def message_repr(msg: Message) -> str:
-    """
-    Returns out the representation of a :class:`confluent_kafka.Message`
-
-    :param msg: The message which shall be turned into a string.
-    :return: String representation of the message.
-    """
-    return (
-        f'Message(key={msg.key()!r}, value={msg.value()!r}, topic={msg.topic()!r}, '
-        f'partition={msg.partition()!r}, offset={msg.offset()!r}, error={msg.error()!r})'
-    )

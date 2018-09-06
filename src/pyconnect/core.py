@@ -8,8 +8,22 @@ from enum import Enum
 from typing import Any, Callable, Optional
 
 from confluent_kafka import KafkaException
+from confluent_kafka.cimpl import Message
 
 logger = logging.getLogger(__name__)
+
+
+def message_repr(msg: Message) -> str:
+    """
+    Returns out the representation of a :class:`confluent_kafka.Message`
+
+    :param msg: The message which shall be turned into a string.
+    :return: String representation of the message.
+    """
+    return (
+        f'Message(key={msg.key()!r}, value={msg.value()!r}, topic={msg.topic()!r}, '
+        f'partition={msg.partition()!r}, offset={msg.offset()!r}, error={msg.error()!r})'
+    )
 
 
 class PyConnectException(Exception):
