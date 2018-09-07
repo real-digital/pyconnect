@@ -126,8 +126,7 @@ def plain_avro_producer(cluster_hosts, topic) -> confluent_avro.AvroProducer:
     topic_id, partitions = topic
     producer_config = {
         'bootstrap.servers': cluster_hosts['broker'],
-        'schema.registry.url': cluster_hosts['schema-registry'],
-        'group.id': topic_id + '_plain_producer_group_id'  # no idea what this does...
+        'schema.registry.url': cluster_hosts['schema-registry']
     }
     producer = confluent_avro.AvroProducer(producer_config)
     producer.produce = partial(producer.produce, topic=topic_id)

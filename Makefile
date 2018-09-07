@@ -13,7 +13,7 @@ install-hooks: install-virtualenv
 	git config --bool flake8.strict true
 
 install-system-packages:
-	sudo apt-get install docker docker-compose kafkacat python-virtualenv python3.7 -y
+	sudo apt-get install docker docker-compose kafkacat virtualenv python3.6 -y
 
 install-virtualenv:
 	[[ -d .venv ]] || virtualenv --python=3.6 ./.venv

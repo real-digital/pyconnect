@@ -5,7 +5,7 @@ import pytest
 
 from pyconnect.config import SourceConfig
 from test.conftest import ConsumeAll, RecordList
-from .utils import PyConnectTestSource
+from .utils import PyConnectTestSource, compare_lists_unordered
 
 SourceFactory = Callable[..., PyConnectTestSource]
 
@@ -41,9 +41,7 @@ def test_produce_messages(source_factory: SourceFactory, records: RecordList, co
     sleep(1)
     consumed_records = consume_all()
 
-    assert len(consumed_records) == len(records)
-    for consumed_record in consumed_records:
-        assert consumed_record in records
+    compare_lists_unordered(consumed_records, records)
 
 
 @pytest.mark.e2e

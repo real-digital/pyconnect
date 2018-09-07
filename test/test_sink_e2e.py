@@ -3,7 +3,7 @@ from typing import Callable
 import pytest
 
 from pyconnect.config import SinkConfig
-from .utils import PyConnectTestSink, TestException
+from .utils import PyConnectTestSink, TestException, compare_lists_unordered
 
 ConnectSinkFactory = Callable[..., PyConnectTestSink]
 
@@ -41,10 +41,7 @@ def test_message_consumption(produced_messages, connect_sink_factory: ConnectSin
 
     connect_sink.run()
 
-    assert len(produced_messages) == len(connect_sink.flushed_messages)
-
-    for message in produced_messages:
-        assert message in connect_sink.flushed_messages
+    compare_lists_unordered(produced_messages, connect_sink.flushed_messages)
 
 
 @pytest.mark.e2e
@@ -63,5 +60,4 @@ def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSi
 
     flushed_messages.extend(connect_sink.flushed_messages)
 
-    for message in produced_messages:
-        assert message in flushed_messages
+    compare_lists_unordered(produced_messages, flushed_messages)

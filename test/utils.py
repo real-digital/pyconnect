@@ -7,7 +7,7 @@ import string
 import subprocess
 from pprint import pprint
 from typing import Any, Dict, List, Optional, Tuple
-from unittest import mock
+from unittest import TestCase, mock
 
 import pytest
 from confluent_kafka.cimpl import Message
@@ -320,3 +320,7 @@ def rand_text(textlen: int) -> str:
     :return: Random string.
     """
     return ''.join(random.choices(string.ascii_uppercase, k=textlen))
+
+
+def compare_lists_unordered(list1, list2):
+    TestCase().assertCountEqual(list1, list2)

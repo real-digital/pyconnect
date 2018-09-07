@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from .utils import ROOT_DIR
+from .utils import ROOT_DIR, compare_lists_unordered
 
 EXAMPLES_DIR = ROOT_DIR / 'examples'
 
@@ -43,10 +43,12 @@ def test_file_sink_example(cluster_hosts, topic, produced_messages, tmp_with_pyc
 
     filedata = sinkfile.read_text()
 
-    saved_records = [json.loads(line) for line in filedata.splitlines()]
+    saved_messages = [
+        (record['key'], record['value'])
+        for record in map(json.loads, filedata.splitlines())
+    ]
 
-    for key, value in produced_messages:
-        assert {'key': key, 'value': value} in saved_records
+    compare_lists_unordered(produced_messages, saved_messages)
 
 
 @pytest.mark.e2e
@@ -77,5 +79,4 @@ def test_file_source_example(records, cluster_hosts, topic, consume_all, tmp_wit
 
     published_records = consume_all()
 
-    for record in records:
-        assert record in published_records
+    compare_lists_unordered(records, published_records)
