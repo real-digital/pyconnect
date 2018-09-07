@@ -4,10 +4,7 @@ from unittest import mock
 import pytest
 
 from pyconnect.config import SourceConfig
-from test.utils import PyConnectTestSource, TestException
-# noinspection PyUnresolvedReferences
-from test.utils import eof_message, error_message_factory, failing_callback, message_factory
-
+from .utils import PyConnectTestSource, TestException
 
 SourceFactory = Callable[..., PyConnectTestSource]
 

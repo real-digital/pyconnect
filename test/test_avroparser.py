@@ -1,6 +1,8 @@
-from pyconnect.avroparser import create_schema_from_record
 import json
+
 from confluent_kafka.avro import loads
+
+from pyconnect.avroparser import create_schema_from_record
 
 data = {
     "fint": 1,

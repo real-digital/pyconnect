@@ -1,14 +1,14 @@
+import logging
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-import logging
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError
 
-from pyconnect.config import SinkConfig
-from pyconnect.core import BaseConnector, Status
+from .config import SinkConfig
+from .core import BaseConnector, Status, message_repr
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +97,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             **self.config['kafka_opts']
         }
         consumer = AvroConsumer(config)
+        logging.info(f'AvroConsumer created with config: {config}')
         # noinspection PyArgumentList
         consumer.subscribe(self.config['topics'], on_assign=self._on_assign, on_revoke=self._on_revoke)
 
@@ -109,6 +110,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         assigned partitions to `False`.
         This callback is registered automatically on topic subscription.
         """
+        logger.info(f'Assigned to partitions: {partitions}')
         for partition in partitions:
             self.eof_reached[(partition.topic, partition.partition)] = False
 
@@ -118,6 +120,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         function is called and will delete the EOF reached flag for all revoked partitions.
         This callback is registered automatically on topic subscription.
         """
+        logger.info(f'Revoked from partitions: {partitions}')
         for partition in partitions:
             del self.eof_reached[(partition.topic, partition.partition)]
 
@@ -139,6 +142,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         Calls the right handler according to the message's type. The message is meant to be the return value given by
         :meth:`confluent_kafka.Consumer.poll`.
         """
+        if msg is not None:
+            logger.debug(f'Message received: {message_repr(msg)}')
+        else:
+            logger.debug('Message received: None')
+
         msg_type = determine_message_type(msg)
         if msg_type == MessageType.STANDARD:
             self._on_message_received(msg)
@@ -154,7 +162,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _update_offset_from_message(self, msg: Message):
         """
-        Takes a message and updates the cached offset information with it so offsets are up to date when we commit them.
+        Takes a message and updates the cached offset information with it so offsets are up to date when
+        we commit them.
         """
         topic_partition = msg_to_topic_partition(msg)
         topic_partition.offset += 1
@@ -175,6 +184,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     def _on_no_message_received(self):
         if self.last_message is not None:
             # last_message at this point only present if error code was _PARTITION_EOF
+            assert self.last_message.error().code() == KafkaError._PARTITION_EOF, 'Message is not EOF!'
             key = (self.last_message.topic(), self.last_message.partition())
             self.eof_reached[key] = True
         self._safe_call_and_set_status(self.on_no_message_received)

@@ -1,18 +1,15 @@
 pipeline:
-  build:
-    image: python:${PYTHON_VERSION}-stretch
-    commands:
-      - python -m venv venv_test
-      - . venv_test/bin/activate
-      - pip install -r requirements.txt
-
   full-tests:
     image: python:${PYTHON_VERSION}-stretch
     commands:
       - apt-get update
-      - apt-get install -yq --no-install-recommends openjdk-8-jre
-      - . venv_test/bin/activate
-      - pytest --run-e2e --doctest-modules
+      - apt-get install -yq --no-install-recommends openjdk-8-jre virtualenv
+      - virtualenv --python=python3 .venv
+      - ./.venv/bin/pip install -U pip
+      - ./.venv/bin/pip install -r test-requirements.txt -r flake8-requirements.txt -e .
+      - (until (curl -s "http://rest-proxy:8082/topics" >/dev/null); do sleep 0.1s; done)
+      - ./.venv/bin/pytest --run-e2e --doctest-modules
+      - ./.venv/bin/flake8
 
   slack:
     image: plugins/slack

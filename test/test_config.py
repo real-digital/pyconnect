@@ -1,9 +1,27 @@
-from inspect import signature
 import logging
+from inspect import signature
+from unittest import mock
 
 import pytest
 
 from pyconnect.config import BaseConfig, SanityError, SinkConfig, _checkstr_to_checker, csv_line_reader
+
+
+# TODO add tests for the other config loaders
+def test_env_loader():
+    env_vars = {
+        'PYCONNECT_BOOTSTRAP_SERVERS': 'broker:9092',
+        'PYCONNECT_SCHEMA_REGISTRY': 'schema-registry:8082',
+        'PYCONNECT_TOPICS': 'testtopic',
+        'PYCONNECT_GROUP_ID': 'testgroup'
+    }
+    with mock.patch.dict('pyconnect.config.os.environ', env_vars):
+        config = SinkConfig.from_env_variables()
+
+        assert config['bootstrap_servers'] == ['broker:9092']
+        assert config['schema_registry'] == 'schema-registry:8082'
+        assert config['topics'] == ['testtopic']
+        assert config['group_id'] == 'testgroup'
 
 
 def test_checkstr_to_checker():

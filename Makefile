@@ -2,9 +2,10 @@ VERSION := 0.0.2
 GROUP := None
 SHELL = /bin/bash
 
-install-hooks:
-	pip3 install --user -r flake8-requirements.txt && \
-	pip3 install --user gitpython==2.1.10 && \
+install-hooks: install-virtualenv
+	. .venv/bin/activate && \
+	pip3 install -r flake8-requirements.txt && \
+	pip3 install gitpython==2.1.10 && \
 	ln -sf ../../commithooks/pre-commit .git/hooks/pre-commit && \
 	ln -sf ../../commithooks/prepare-commit-msg .git/hooks/prepare-commit-msg && \
 	chmod +x .git/hooks/pre-commit && \
@@ -12,11 +13,12 @@ install-hooks:
 	git config --bool flake8.strict true
 
 install-system-packages:
-	sudo apt-get install docker docker-compose kafkacat python-virtualenv python3.7 -y
+	sudo apt-get install docker docker-compose kafkacat virtualenv python3.6 -y
 
 install-virtualenv:
-	[[ -d .venv ]] || virtualenv --python=3.7 ./.venv
+	[[ -d .venv ]] || virtualenv --python=3.6 ./.venv
 	./.venv/bin/python -m pip install -r requirements.txt
+	./.venv/bin/python -m pip install -e .
 
 install-hosts:
 	[[ -n "`cat /etc/hosts | grep __start_pyconnect__`" ]] || \
@@ -67,8 +69,9 @@ check-offsets: boot-cluster
 	test/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
 
 publish-test:
-	python setup.py sdist
-	twine upload dist/* -r testpypi
+	rm -rf dist
+	python setup.py sdist bdist_wheel
+	twine upload dist/* --repository-url https://test.pypi.org/legacy/
 
 publish: publish-test
 	twine upload dist/*

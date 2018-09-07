@@ -1,10 +1,11 @@
 """
 This module offers functions which infer avro schemas from records.
 """
-# TODO: refactor this code, especially the name 'avroparser' is misleading, should be something like 'schema_inference'
-from confluent_kafka import avro as confluent_avro
 import json
 from typing import Any, Dict
+
+# TODO: refactor this code, especially the name 'avroparser' is misleading, should be something like 'schema_inference'
+from confluent_kafka import avro as confluent_avro
 
 RecordDict = Dict[str, Any]
 
@@ -30,7 +31,7 @@ def _parse_avro_field(name: str, element: Any, optional_primitives: bool) -> Rec
     # TODO: _parse_avro_field shouldn't care about a field's name, this is the caller's responsibility
 
     elem_type = type(element)
-    primitive_avro_type = SIMPLE_TYPE_MAP.get(elem_type, None)
+    primitive_avro_type: Any = SIMPLE_TYPE_MAP.get(elem_type, None)
 
     # simple types
     if primitive_avro_type is not None:

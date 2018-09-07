@@ -5,10 +5,7 @@ import pytest
 
 from pyconnect.config import SinkConfig
 from pyconnect.pyconnectsink import Status
-from test.utils import PyConnectTestSink, TestException
-# noinspection PyUnresolvedReferences
-from test.utils import error_message_factory, failing_callback, message_factory
-
+from .utils import PyConnectTestSink, TestException
 
 SinkFactory = Callable[..., PyConnectTestSink]
 
@@ -65,10 +62,11 @@ def test_callbacks_are_called(sink_factory: SinkFactory, message_factory, error_
     # then error message
     # then raise exception
     connect_sink._consumer.poll.side_effect = [
-            msg,
-            None,
-            error_msg,
-            TestException()]
+        msg,
+        None,
+        error_msg,
+        TestException()
+    ]
 
     # perform
     with pytest.raises(TestException):
@@ -256,7 +254,7 @@ def test_no_commit_if_final_flush_failed(run_once_sink: PyConnectTestSink, faili
 def test_flush_after_run(sink_factory: SinkFactory, message_factory):
     # setup
     connect_sink = sink_factory()
-    connect_sink._consumer.poll.side_effect = [message_factory()]*5 + [None]
+    connect_sink._consumer.poll.side_effect = [message_factory()] * 5 + [None]
     connect_sink.on_no_message_received = mock.Mock(
         return_value=Status.STOPPED)
     connect_sink.on_flush = mock.Mock(return_value=None)

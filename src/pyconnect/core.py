@@ -2,14 +2,28 @@
 This module contains central dependencies for all other modules such as base exceptions or base classes
 """
 
+import logging
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-import logging
 from typing import Any, Callable, Optional
 
 from confluent_kafka import KafkaException
+from confluent_kafka.cimpl import Message
 
 logger = logging.getLogger(__name__)
+
+
+def message_repr(msg: Message) -> str:
+    """
+    Returns out the representation of a :class:`confluent_kafka.Message`
+
+    :param msg: The message which shall be turned into a string.
+    :return: String representation of the message.
+    """
+    return (
+        f'Message(key={msg.key()!r}, value={msg.value()!r}, topic={msg.topic()!r}, '
+        f'partition={msg.partition()!r}, offset={msg.offset()!r}, error={msg.error()!r})'
+    )
 
 
 class PyConnectException(Exception):
@@ -53,7 +67,7 @@ class BaseConnector(metaclass=ABCMeta):
 
     def __init__(self) -> None:
         self._status = Status.NOT_YET_RUNNING
-        self._status_info = None
+        self._status_info: Any = None
 
     @property
     def is_running(self) -> bool:

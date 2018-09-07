@@ -2,12 +2,13 @@ from setuptools import setup
 
 setup(
     name='pyconnect',
-    version='0.0.2',
+    version='0.0.5',
     packages=['pyconnect'],
+    package_dir={'': 'src'},
 
     # minimal requirements to run pyconnect
     install_requires=[
-        "confluent-kafka>=0.11.5",
+        "confluent-kafka[avro]>=0.11.5",
         "pyaml>=3.13"
     ],
     url='https://github.com/MrTrustworthy/pyconnect',
