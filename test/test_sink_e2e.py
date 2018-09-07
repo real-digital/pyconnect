@@ -9,7 +9,7 @@ ConnectSinkFactory = Callable[..., PyConnectTestSink]
 
 
 @pytest.fixture
-def connect_sink_factory(cluster_hosts, topic) -> ConnectSinkFactory:
+def connect_sink_factory(running_cluster_config, topic) -> ConnectSinkFactory:
     """
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSink`.
     If necessary, any config parameter can be overwritten by providing a custom config as argument to the factory.
@@ -17,8 +17,8 @@ def connect_sink_factory(cluster_hosts, topic) -> ConnectSinkFactory:
     topic_id, partitions = topic
     group_id = topic_id + '_sink_group_id'
     sink_config = SinkConfig({
-        'bootstrap_servers': cluster_hosts['broker'],
-        'schema_registry': cluster_hosts['schema-registry'],
+        'bootstrap_servers': running_cluster_config['broker'],
+        'schema_registry': running_cluster_config['schema-registry'],
         'offset_commit_interval': 1,
         'group_id': group_id,
         'poll_timeout': 10,

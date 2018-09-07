@@ -46,8 +46,8 @@ def failing_callback(request):
     return mock.Mock(side_effect=it.repeat(request.param))
 
 
-@pytest.fixture(scope='module')
-def cluster_hosts() -> Dict[str, str]:
+@pytest.fixture(scope='session')
+def cluster_config() -> Dict[str, str]:
     """
     Reads the docker-compose.yml in order to determine the host names and ports of the different services necessary
     for the kafka cluster.
@@ -79,18 +79,34 @@ def cluster_hosts() -> Dict[str, str]:
 
     assert all(hosts.values()), 'Not all service urls have been defined!'
 
-    completed = subprocess.run(['curl', '-s', hosts['rest-proxy'] + "/topics"], stdout=subprocess.DEVNULL)
-
-    if completed.returncode != 0:
-        pytest.fail('Kafka Cluster is not running!')
-
     return hosts
+
+
+@pytest.fixture(scope='session')
+def assert_cluster_running(cluster_config) -> None:
+    """
+    Makes sure the kafka cluster is running by checking whether the rest-proxy service returns the topics
+    """
+    completed = subprocess.run(['curl', '-s', cluster_config['rest-proxy'] + "/topics"], stdout=subprocess.DEVNULL)
+
+    assert completed.returncode == 0, 'Kafka Cluster is not running!'
+
+
+@pytest.fixture(scope='session')
+def running_cluster_config(cluster_config, assert_cluster_running) -> Dict[str, str]:
+    """
+    Reads the docker-compose.yml in order to determine the host names and ports of the different services necessary
+    for the kafka cluster.
+    Also makes sure that the cluster is running.
+    :return: A map from service to url.
+    """
+    return cluster_config
 
 
 @pytest.fixture(
     params=[1, 2, 4],
     ids=['num_partitions=1', 'num_partitions=2', 'num_partitions=4'])
-def topic(request, cluster_hosts) -> Iterable[Tuple[str, int]]:
+def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
     """
     Creates a kafka topic consisting of a random 5 character string and being partition into 1, 2 or 4 partitions.
     Then it yields the tuple (topic, n_partitions).
@@ -103,7 +119,7 @@ def topic(request, cluster_hosts) -> Iterable[Tuple[str, int]]:
 
     subprocess.call([
         CLI_DIR / 'kafka-topics.sh',
-        '--zookeeper', cluster_hosts['zookeeper'],
+        '--zookeeper', running_cluster_config['zookeeper'],
         '--create', '--topic', topic_id,
         '--partitions', str(partitions),
         '--replication-factor', '1'
@@ -113,20 +129,20 @@ def topic(request, cluster_hosts) -> Iterable[Tuple[str, int]]:
 
     subprocess.call([
         CLI_DIR / 'kafka-topics.sh',
-        '--zookeeper', cluster_hosts['zookeeper'],
+        '--zookeeper', running_cluster_config['zookeeper'],
         '--describe', '--topic', topic_id
     ])
 
 
 @pytest.fixture
-def plain_avro_producer(cluster_hosts, topic) -> confluent_avro.AvroProducer:
+def plain_avro_producer(running_cluster_config, topic) -> confluent_avro.AvroProducer:
     """
     Creates a plain `confluent_kafka.avro.AvroProducer` that can be used to publish messages.
     """
     topic_id, partitions = topic
     producer_config = {
-        'bootstrap.servers': cluster_hosts['broker'],
-        'schema.registry.url': cluster_hosts['schema-registry']
+        'bootstrap.servers': running_cluster_config['broker'],
+        'schema.registry.url': running_cluster_config['schema-registry']
     }
     producer = confluent_avro.AvroProducer(producer_config)
     producer.produce = partial(producer.produce, topic=topic_id)
@@ -135,7 +151,7 @@ def plain_avro_producer(cluster_hosts, topic) -> confluent_avro.AvroProducer:
 
 
 @pytest.fixture
-def produced_messages(records, plain_avro_producer, topic, cluster_hosts,
+def produced_messages(records, plain_avro_producer, topic, running_cluster_config,
                       consume_all) -> Iterable[List[Tuple[str, dict]]]:
     """
     Creates 15 random messages, produces them to the currently active topic and then yields them for the test.
@@ -152,7 +168,7 @@ def produced_messages(records, plain_avro_producer, topic, cluster_hosts,
     plain_avro_producer.flush()
 
     topic_highwater = subprocess.run([CLI_DIR / 'kafka-run-class.sh', 'kafka.tools.GetOffsetShell',
-                                      '--broker-list', cluster_hosts['broker'], '--topic', topic_id,
+                                      '--broker-list', running_cluster_config['broker'], '--topic', topic_id,
                                       '--time', '-1', '--offsets', '1'],
                                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout
     print(topic_highwater)
@@ -221,15 +237,15 @@ def records() -> RecordList:
 
 
 @pytest.fixture
-def consume_all(topic, cluster_hosts) -> Iterable[ConsumeAll]:
+def consume_all(topic, running_cluster_config) -> Iterable[ConsumeAll]:
     """
     Creates a function that consumes and returns all messages for the current test's topic.
     """
     topic_id, _ = topic
 
     consumer = AvroConsumer({
-        'bootstrap.servers': cluster_hosts['broker'],
-        'schema.registry.url': cluster_hosts['schema-registry'],
+        'bootstrap.servers': running_cluster_config['broker'],
+        'schema.registry.url': running_cluster_config['schema-registry'],
         'group.id': f'{topic_id}_consumer',
         'enable.partition.eof': False,
         "default.topic.config": {

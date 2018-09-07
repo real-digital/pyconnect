@@ -23,13 +23,13 @@ def tmp_with_pyconnect(tmpdir):
 
 
 @pytest.mark.e2e
-def test_file_sink_example(cluster_hosts, topic, produced_messages, tmp_with_pyconnect):
+def test_file_sink_example(running_cluster_config, topic, produced_messages, tmp_with_pyconnect):
     tmpdir, venv_bin = tmp_with_pyconnect
     sinkfile = tmpdir / 'sink_dir' / 'sinkfile'
 
     env_vars = {
-        'PYCONNECT_BOOTSTRAP_SERVERS': cluster_hosts['broker'],
-        'PYCONNECT_SCHEMA_REGISTRY': cluster_hosts['schema-registry'],
+        'PYCONNECT_BOOTSTRAP_SERVERS': running_cluster_config['broker'],
+        'PYCONNECT_SCHEMA_REGISTRY': running_cluster_config['schema-registry'],
         'PYCONNECT_TOPICS': topic[0],
         'PYCONNECT_GROUP_ID': 'testgroup',
         'PYCONNECT_SINK_DIRECTORY': sinkfile.parent,
@@ -52,13 +52,13 @@ def test_file_sink_example(cluster_hosts, topic, produced_messages, tmp_with_pyc
 
 
 @pytest.mark.e2e
-def test_file_source_example(records, cluster_hosts, topic, consume_all, tmp_with_pyconnect):
+def test_file_source_example(records, running_cluster_config, topic, consume_all, tmp_with_pyconnect):
     tmpdir, venv_bin = tmp_with_pyconnect
     source_file = tmpdir / 'source_dir' / 'sourcefile'
 
     env_vars = {
-        'PYCONNECT_BOOTSTRAP_SERVERS': cluster_hosts['broker'],
-        'PYCONNECT_SCHEMA_REGISTRY': cluster_hosts['schema-registry'],
+        'PYCONNECT_BOOTSTRAP_SERVERS': running_cluster_config['broker'],
+        'PYCONNECT_SCHEMA_REGISTRY': running_cluster_config['schema-registry'],
         'PYCONNECT_TOPIC': topic[0],
         'PYCONNECT_OFFSET_TOPIC': topic[0] + '_offset_topic',
         'PYCONNECT_SOURCE_DIRECTORY': source_file.parent,

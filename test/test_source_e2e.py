@@ -11,15 +11,15 @@ SourceFactory = Callable[..., PyConnectTestSource]
 
 
 @pytest.fixture
-def source_factory(topic, cluster_hosts) -> Iterable[SourceFactory]:
+def source_factory(topic, running_cluster_config) -> Iterable[SourceFactory]:
     """
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSource`.
     """
     topic_id, _ = topic
 
     config = SourceConfig(dict(
-        bootstrap_servers=cluster_hosts['broker'],
-        schema_registry=cluster_hosts['schema-registry'],
+        bootstrap_servers=running_cluster_config['broker'],
+        schema_registry=running_cluster_config['schema-registry'],
         offset_topic=f'{topic_id}_offsets',
         offset_commit_interval=5,
         topic=topic_id
