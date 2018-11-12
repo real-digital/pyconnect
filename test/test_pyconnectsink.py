@@ -20,7 +20,7 @@ def sink_factory():
         poll_timeout=1,
         topics=''
     ))
-    with mock.patch('pyconnect.pyconnectsink.AvroConsumer', autospec=True):
+    with mock.patch('pyconnect.pyconnectsink.RichAvroConsumer', autospec=True):
         def sink_factory_():
             sink = PyConnectTestSink(conf)
             sink._consumer.poll.return_value = None

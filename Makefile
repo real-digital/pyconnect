@@ -2,7 +2,7 @@ VERSION := 0.0.2
 GROUP := None
 SHELL = /bin/bash
 
-install-hooks: install-virtualenv
+install-hooks:
 	. .venv/bin/activate && \
 	pip3 install -r flake8-requirements.txt && \
 	pip3 install gitpython==2.1.10 && \

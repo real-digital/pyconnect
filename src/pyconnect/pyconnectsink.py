@@ -1,8 +1,8 @@
 import logging
+import struct
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
-import struct
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
@@ -75,7 +75,7 @@ class RichAvroConsumer(AvroConsumer):
     """
     def __init__(self, config, schema_registry=None):
 
-        super(RichAvroConsumer, self).__init__(config, schema_registry=schema_registry)
+        super().__init__(config, schema_registry=schema_registry)
         self._current_raw_message_key = None
         self._current_raw_message_value = None
 
@@ -102,6 +102,8 @@ class RichAvroConsumer(AvroConsumer):
         """
         if timeout is None:
             timeout = -1
+
+        # Call grandparent's poll method to skip AvroConsumer's message conversion
         message = super(AvroConsumer, self).poll(timeout)
         if message is None:
             return None
