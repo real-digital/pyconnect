@@ -1,10 +1,12 @@
 import logging
+import struct
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
+from confluent_kafka.avro.serializer.message_serializer import ContextStringIO
 from confluent_kafka.cimpl import KafkaError
 
 from .config import SinkConfig
@@ -61,6 +63,67 @@ def msg_to_topic_partition(msg: Message) -> TopicPartition:
     return TopicPartition(msg.topic(), msg.partition(), msg.offset())
 
 
+class RichAvroConsumer(AvroConsumer):
+    """
+    Kafka Consumer client which does avro schema decoding of messages.
+    Handles message deserialization.
+
+    Constructor takes below parameters
+
+    :param dict config: Config parameters containing url for schema registry (``schema.registry.url``)
+                        and the standard Kafka client configuration (``bootstrap.servers`` et.al).
+    """
+    def __init__(self, config, schema_registry=None):
+
+        super().__init__(config, schema_registry=schema_registry)
+        self._current_raw_message_key = None
+        self._current_raw_message_value = None
+
+    @property
+    def current_key_schema_id(self) -> int:
+        with ContextStringIO(self._current_raw_message_key) as payload:
+            _, schema_id = struct.unpack('>bI', payload.read(5))
+        return schema_id
+
+    @property
+    def current_value_schema_id(self) -> int:
+        with ContextStringIO(self._current_raw_message_value) as payload:
+            _, schema_id = struct.unpack('>bI', payload.read(5))
+        return schema_id
+
+    def poll(self, timeout=None):
+        """
+        This is an overriden method from confluent_kafka.Consumer class. This handles message
+        deserialization using avro schema
+
+        :param float timeout: Poll timeout in seconds (default: indefinite)
+        :returns: message object with deserialized key and value as dict objects
+        :rtype: Message
+        """
+        if timeout is None:
+            timeout = -1
+
+        # Call grandparent's poll method to skip AvroConsumer's message conversion
+        message = super(AvroConsumer, self).poll(timeout)
+        if message is None:
+            return None
+        if not message.value() and not message.key():
+            return message
+        if not message.error():
+            if message.value() is not None:
+                self._current_raw_message_value = message.value()
+                decoded_value = self._serializer.decode_message(message.value())
+                message.set_value(decoded_value)
+                assert message.value() != self._current_raw_message_value
+            if message.key() is not None:
+                self._current_raw_message_key = message.key()
+                decoded_key = self._serializer.decode_message(message.key())
+                message.set_key(decoded_key)
+                assert message.key() != self._current_raw_message_key
+
+        return message
+
+
 class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     """
     This class offers base functionality for all sink connectors. All sink connectors have to inherit from this class
@@ -96,7 +159,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             },
             **self.config['kafka_opts']
         }
-        consumer = AvroConsumer(config)
+        consumer = RichAvroConsumer(config)
         logging.info(f'AvroConsumer created with config: {config}')
         # noinspection PyArgumentList
         consumer.subscribe(self.config['topics'], on_assign=self._on_assign, on_revoke=self._on_revoke)

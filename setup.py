@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pyconnect',
-    version='0.0.5',
+    version='0.1.0',
     packages=['pyconnect'],
     package_dir={'': 'src'},
 
