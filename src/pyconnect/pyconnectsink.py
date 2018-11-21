@@ -111,15 +111,13 @@ class RichAvroConsumer(AvroConsumer):
             return message
         if not message.error():
             if message.value() is not None:
-                self._current_key_schema_id = self.extract_schema_id(message.value())
+                self._current_value_schema_id = self.extract_schema_id(message.value())
                 decoded_value = self._serializer.decode_message(message.value())
                 message.set_value(decoded_value)
-                assert message.value() != self._current_raw_message_value
             if message.key() is not None:
-                self._current_value_schema_id = self.extract_schema_id(message.value())
+                self._current_key_schema_id = self.extract_schema_id(message.value())
                 decoded_key = self._serializer.decode_message(message.key())
                 message.set_key(decoded_key)
-                assert message.key() != self._current_raw_message_key
 
         return message
 
