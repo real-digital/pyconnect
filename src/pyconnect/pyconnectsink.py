@@ -2,11 +2,11 @@ import logging
 import struct
 from abc import ABCMeta, abstractmethod
 from enum import Enum
+from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.avro.serializer.message_serializer import ContextStringIO
 from confluent_kafka.cimpl import KafkaError
 
 from .config import SinkConfig
@@ -76,20 +76,24 @@ class RichAvroConsumer(AvroConsumer):
     def __init__(self, config, schema_registry=None):
 
         super().__init__(config, schema_registry=schema_registry)
-        self._current_raw_message_key = None
-        self._current_raw_message_value = None
+        self._current_key_schema_id = None
+        self._current_value_schema_id = None
+
+    @staticmethod
+    def extract_schema_id(payload: BytesIO) -> int:
+        old_position = payload.tell()
+        payload.seek(0)
+        _, schema_id = struct.unpack('>bI', payload.read(5))
+        payload.seek(old_position)
+        return schema_id
 
     @property
     def current_key_schema_id(self) -> int:
-        with ContextStringIO(self._current_raw_message_key) as payload:
-            _, schema_id = struct.unpack('>bI', payload.read(5))
-        return schema_id
+        return self._current_key_schema_id
 
     @property
     def current_value_schema_id(self) -> int:
-        with ContextStringIO(self._current_raw_message_value) as payload:
-            _, schema_id = struct.unpack('>bI', payload.read(5))
-        return schema_id
+        return self._current_value_schema_id
 
     def poll(self, timeout=None):
         """
@@ -111,12 +115,12 @@ class RichAvroConsumer(AvroConsumer):
             return message
         if not message.error():
             if message.value() is not None:
-                self._current_raw_message_value = message.value()
+                self._current_key_schema_id = self.extract_schema_id(message.value())
                 decoded_value = self._serializer.decode_message(message.value())
                 message.set_value(decoded_value)
                 assert message.value() != self._current_raw_message_value
             if message.key() is not None:
-                self._current_raw_message_key = message.key()
+                self._current_value_schema_id = self.extract_schema_id(message.value())
                 decoded_key = self._serializer.decode_message(message.key())
                 message.set_key(decoded_key)
                 assert message.key() != self._current_raw_message_key
