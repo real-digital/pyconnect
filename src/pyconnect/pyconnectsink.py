@@ -2,7 +2,6 @@ import logging
 import struct
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
@@ -80,11 +79,8 @@ class RichAvroConsumer(AvroConsumer):
         self._current_value_schema_id = None
 
     @staticmethod
-    def extract_schema_id(payload: BytesIO) -> int:
-        old_position = payload.tell()
-        payload.seek(0)
-        _, schema_id = struct.unpack('>bI', payload.read(5))
-        payload.seek(old_position)
+    def extract_schema_id(payload: bytes) -> int:
+        _, schema_id = struct.unpack('>bI', payload[:5])
         return schema_id
 
     @property
