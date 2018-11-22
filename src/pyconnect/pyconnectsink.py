@@ -81,12 +81,8 @@ class RichAvroConsumer(AvroConsumer):
 
     @staticmethod
     def extract_schema_id(message: Union[str, bytes, None]) -> int:
-        with ContextStringIO(message) as payload:
-            old_position = payload.tell()
-            payload.seek(0)
-            _, schema_id = struct.unpack('>bI', payload.read(5))
-            payload.seek(old_position)
-            return schema_id
+        _, schema_id = struct.unpack('>bI', message[:5])
+        return schema_id
 
     @property
     def current_key_schema_id(self) -> int:
