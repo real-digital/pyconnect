@@ -2,7 +2,7 @@ import logging
 import struct
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
@@ -80,7 +80,7 @@ class RichAvroConsumer(AvroConsumer):
         self._current_value_schema_id = None
 
     @staticmethod
-    def extract_schema_id(message) -> int:
+    def extract_schema_id(message: Union[str, bytes, None]) -> int:
         with ContextStringIO(message) as payload:
             old_position = payload.tell()
             payload.seek(0)
