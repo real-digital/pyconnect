@@ -6,7 +6,6 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.avro.serializer.message_serializer import ContextStringIO
 from confluent_kafka.cimpl import KafkaError
 
 from .config import SinkConfig
