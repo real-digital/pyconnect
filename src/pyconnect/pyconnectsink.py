@@ -5,7 +5,8 @@ from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
-from confluent_kafka.avro import AvroConsumer
+from confluent_kafka.avro import AvroConsumer, SerializerError
+from confluent_kafka.avro.serializer.message_serializer import ContextStringIO, MAGIC_BYTE
 from confluent_kafka.cimpl import KafkaError
 
 from .config import SinkConfig
@@ -62,6 +63,27 @@ def msg_to_topic_partition(msg: Message) -> TopicPartition:
     return TopicPartition(msg.topic(), msg.partition(), msg.offset())
 
 
+def _decode_message(self, message):
+    """
+    Decode a message from kafka that has been encoded for use with
+    the schema registry.
+    @:param: message
+    """
+
+    if message is None:
+        return None
+
+    if len(message) <= 5:
+        raise SerializerError("message is too small to decode")
+
+    with ContextStringIO(message) as payload:
+        magic, schema_id = struct.unpack('>bI', payload.read(5))
+        if magic != MAGIC_BYTE:
+            raise SerializerError("message does not start with magic byte")
+        decoder_func = self._get_decoder_func(schema_id, payload)
+        return schema_id, decoder_func(payload)
+
+
 class RichAvroConsumer(AvroConsumer):
     """
     Kafka Consumer client which does avro schema decoding of messages.
@@ -72,11 +94,12 @@ class RichAvroConsumer(AvroConsumer):
     :param dict config: Config parameters containing url for schema registry (``schema.registry.url``)
                         and the standard Kafka client configuration (``bootstrap.servers`` et.al).
     """
-    def __init__(self, config, schema_registry=None):
 
+    def __init__(self, config, schema_registry=None):
         super().__init__(config, schema_registry=schema_registry)
         self._current_key_schema_id = None
         self._current_value_schema_id = None
+        self._serializer.decode_message = _decode_message
 
     @staticmethod
     def extract_schema_id(payload: bytes) -> int:
@@ -111,12 +134,10 @@ class RichAvroConsumer(AvroConsumer):
             return message
         if not message.error():
             if message.value() is not None:
-                self._current_value_schema_id = self.extract_schema_id(message.value())
-                decoded_value = self._serializer.decode_message(message.value())
+                self._current_value_schema_id, decoded_value = self._serializer.decode_message(message.value())
                 message.set_value(decoded_value)
             if message.key() is not None:
-                self._current_key_schema_id = self.extract_schema_id(message.value())
-                decoded_key = self._serializer.decode_message(message.key())
+                self._current_key_schema_id, decoded_key = self._serializer.decode_message(message.key())
                 message.set_key(decoded_key)
 
         return message
