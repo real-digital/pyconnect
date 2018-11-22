@@ -63,27 +63,6 @@ def msg_to_topic_partition(msg: Message) -> TopicPartition:
     return TopicPartition(msg.topic(), msg.partition(), msg.offset())
 
 
-def _decode_message(self, message):
-    """
-    Decode a message from kafka that has been encoded for use with
-    the schema registry.
-    @:param: message
-    """
-
-    if message is None:
-        return None
-
-    if len(message) <= 5:
-        raise SerializerError("message is too small to decode")
-
-    with ContextStringIO(message) as payload:
-        magic, schema_id = struct.unpack('>bI', payload.read(5))
-        if magic != MAGIC_BYTE:
-            raise SerializerError("message does not start with magic byte")
-        decoder_func = self._get_decoder_func(schema_id, payload)
-        return schema_id, decoder_func(payload)
-
-
 class RichAvroConsumer(AvroConsumer):
     """
     Kafka Consumer client which does avro schema decoding of messages.
@@ -99,7 +78,7 @@ class RichAvroConsumer(AvroConsumer):
         super().__init__(config, schema_registry=schema_registry)
         self._current_key_schema_id = None
         self._current_value_schema_id = None
-        self._serializer.decode_message = _decode_message
+        self._serializer.decode_message = self._decode_message
 
     @staticmethod
     def extract_schema_id(payload: bytes) -> int:
@@ -113,6 +92,26 @@ class RichAvroConsumer(AvroConsumer):
     @property
     def current_value_schema_id(self) -> int:
         return self._current_value_schema_id
+
+    def _decode_message(self, message):
+        """
+        Decode a message from kafka that has been encoded for use with
+        the schema registry.
+        @:param: message
+        """
+
+        if message is None:
+            return None
+
+        if len(message) <= 5:
+            raise SerializerError("message is too small to decode")
+
+        with ContextStringIO(message) as payload:
+            magic, schema_id = struct.unpack('>bI', payload.read(5))
+            if magic != MAGIC_BYTE:
+                raise SerializerError("message does not start with magic byte")
+            decoder_func = self._serializer._get_decoder_func(schema_id, payload)
+            return schema_id, decoder_func(payload)
 
     def poll(self, timeout=None):
         """
