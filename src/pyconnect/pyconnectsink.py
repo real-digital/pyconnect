@@ -199,8 +199,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             self._status_info = None
             msg = self._consumer.poll(self.config['poll_timeout'])
             self.current_message = msg
-            self._call_right_handler_for_message(msg)
             self._flush_if_needed()
+            self._call_right_handler_for_message(msg)
         except Exception as e:
             self._handle_exception(e)
         if self.status == Status.CRASHED:
@@ -226,8 +226,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _on_message_received(self, msg: Message):
         self.eof_reached[(msg.topic(), msg.partition())] = False
-        self._update_offset_from_message(msg)
         self._safe_call_and_set_status(self.on_message_received, msg)
+        self._update_offset_from_message(msg)
 
     def _update_offset_from_message(self, msg: Message):
         """
@@ -287,8 +287,10 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def need_flush(self):
         """
-        Called regularly at the end of each run loop cycle in order to determine if
-        :meth:`pyconnect.pyconnectsink.PyConnectSink.on_flush` needs to be called.
+        Called regularly at the start of each run loop cycle after
+        :attr:`pyconnect.pyconnectsink.PyConnectSink.current_message` has been set to the newly arrived message.
+        This function determines whether :meth:`pyconnect.pyconnectsink.PyConnectSink.on_flush` needs to be run
+        before the message handler is called.
 
         Default behaviour is to return True all the time so every message is flushed and its offset committed.
 
@@ -308,7 +310,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         This callback is called whenever the sink is supposed to flush all messages it has consumed so far.
         There are two situations in which this is the case:
 
-            1. At the end of a run loop cycle, when :meth:`pyconnect.pyconnectsink.PyConnectSink.need_flush` returns
+            1. At the start of a run loop cycle, when :meth:`pyconnect.pyconnectsink.PyConnectSink.need_flush` returns
                `True`.
 
             2. After the run loop, during :meth:`pyconnect.pyconnectsink.PyConnectSink.on_shutdown` if it wasn't
