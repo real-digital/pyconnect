@@ -116,7 +116,7 @@ def test_commit_after_flush(message_factory, run_once_sink: PyConnectTestSink):
     assert run_once_sink._consumer.commit.called
 
 
-def test_last_message_is_set(message_factory, run_once_sink: PyConnectTestSink):
+def test_current_message_is_set(message_factory, run_once_sink: PyConnectTestSink):
     # setup
     msg = message_factory()
     run_once_sink._consumer.poll.return_value = msg
@@ -125,10 +125,10 @@ def test_last_message_is_set(message_factory, run_once_sink: PyConnectTestSink):
     run_once_sink.run()
 
     # test
-    assert run_once_sink.last_message is msg
+    assert run_once_sink.current_message is msg
 
 
-def test_last_message_is_unset(sink_factory: SinkFactory, message_factory):
+def test_current_message_is_unset(sink_factory: SinkFactory, message_factory):
     # setup
     msg = message_factory()
     connect_sink = sink_factory()
@@ -139,7 +139,7 @@ def test_last_message_is_unset(sink_factory: SinkFactory, message_factory):
         connect_sink.run()
 
     # test
-    assert connect_sink.last_message is None
+    assert connect_sink.current_message is None
 
 
 def test_status_info_is_set(sink_factory: SinkFactory, message_factory):

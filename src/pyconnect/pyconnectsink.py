@@ -1,5 +1,6 @@
 import logging
 import struct
+import warnings
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
@@ -134,7 +135,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
 
-        self.last_message: Message = None
+        self.current_message: Message = None
         self._offsets: Dict[Tuple[str, int], TopicPartition] = {}
         self.eof_reached: Dict[Tuple[str, int], bool] = {}
 
@@ -185,12 +186,19 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         for partition in partitions:
             del self.eof_reached[(partition.topic, partition.partition)]
 
+    @property
+    def last_message(self):
+        # TODO: when bumping to next major release, remove this property
+        warnings.warn("'last_message' will be permanently renamed to 'current_message' in next major release",
+                      DeprecationWarning)
+        return self.current_message
+
     def _run_once(self) -> None:
         try:
-            self.last_message = None
+            self.current_message = None
             self._status_info = None
             msg = self._consumer.poll(self.config['poll_timeout'])
-            self.last_message = msg
+            self.current_message = msg
             self._call_right_handler_for_message(msg)
             self._flush_if_needed()
         except Exception as e:
@@ -243,10 +251,10 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         raise NotImplementedError("Need to implement and call this on a subclass")
 
     def _on_no_message_received(self):
-        if self.last_message is not None:
+        if self.current_message is not None:
             # last_message at this point only present if error code was _PARTITION_EOF
-            assert self.last_message.error().code() == KafkaError._PARTITION_EOF, 'Message is not EOF!'
-            key = (self.last_message.topic(), self.last_message.partition())
+            assert self.current_message.error().code() == KafkaError._PARTITION_EOF, 'Message is not EOF!'
+            key = (self.current_message.topic(), self.current_message.partition())
             self.eof_reached[key] = True
         self._safe_call_and_set_status(self.on_no_message_received)
 
