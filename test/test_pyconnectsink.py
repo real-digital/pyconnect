@@ -97,7 +97,7 @@ def test_no_commit_if_flush_failed(run_once_sink: PyConnectTestSink, failing_cal
         pass
 
     # test
-    assert mock.Mock, run_once_sink.on_flush.called
+    assert cast(mock.Mock, run_once_sink.on_flush).called
     assert not cast(mock.Mock, run_once_sink._consumer.commit).called
 
 
