@@ -3,7 +3,7 @@ import struct
 import warnings
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
@@ -80,7 +80,7 @@ class RichAvroConsumer(AvroConsumer):
         self._current_value_schema_id = None
 
     @staticmethod
-    def extract_schema_id(message: Union[str, bytes, None]) -> int:
+    def extract_schema_id(message: bytes) -> int:
         _, schema_id = struct.unpack('>bI', message[:5])
         return schema_id
 
@@ -139,9 +139,9 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         self._offsets: Dict[Tuple[str, int], TopicPartition] = {}
         self.eof_reached: Dict[Tuple[str, int], bool] = {}
 
-        self._consumer: AvroConsumer = self._make_consumer()
+        self._consumer: RichAvroConsumer = self._make_consumer()
 
-    def _make_consumer(self) -> AvroConsumer:
+    def _make_consumer(self) -> RichAvroConsumer:
         config = {
             "bootstrap.servers": ','.join(self.config['bootstrap_servers']),
             "group.id": self.config['group_id'],
