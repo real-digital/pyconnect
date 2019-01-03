@@ -1,4 +1,5 @@
 import itertools as it
+import logging
 import os
 import random
 import subprocess
@@ -15,6 +16,14 @@ from confluent_kafka.cimpl import KafkaError, Message
 from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.core import Status
 from test.utils import CLI_DIR, TEST_DIR, TestException, rand_text
+
+LOGFILE = TEST_DIR / 'test.log'
+LOGFILE.write_text('')
+
+logging.basicConfig(
+    format='%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s',
+    filename=str(TEST_DIR / 'test.log')
+)
 
 
 def pytest_addoption(parser):
@@ -53,7 +62,7 @@ def cluster_config() -> Dict[str, str]:
     for the kafka cluster.
     :return: A map from service to url.
     """
-    with open(TEST_DIR / 'testenv-docker-compose.yml', 'r') as infile:
+    with (TEST_DIR / 'docker-compose.yml').open('r') as infile:
         yml_config = yaml.load(infile)
 
     hosts = {

@@ -160,7 +160,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             **self.config['kafka_opts']
         }
         self._consumer = RichAvroConsumer(config)
-        logging.info(f'AvroConsumer created with config: {config}')
+        logger.info(f'AvroConsumer created with config: {config}')
         # noinspection PyArgumentList
         self._consumer.subscribe(self.config['topics'], on_assign=self._on_assign, on_revoke=self._on_revoke)
 
@@ -248,6 +248,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         topic_partition = msg_to_topic_partition(msg)
         topic_partition.offset += 1
         key = (topic_partition.topic, topic_partition.partition)
+        logger.debug(f'Updating offset: {topic_partition}')
         self.__offsets[key] = topic_partition
 
     @abstractmethod
@@ -340,6 +341,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _commit(self) -> None:
         offsets = list(self.__offsets.values())
+        logger.info(f'Committing offsets: {offsets}')
         self._consumer.commit(offsets=offsets)
 
     def on_shutdown(self):
