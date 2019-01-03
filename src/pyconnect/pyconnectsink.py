@@ -135,12 +135,10 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
 
-        self.current_message: Message = None
+        self.current_message: Optional[Message] = None
         self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
         self.__eof_reached: Dict[Tuple[str, int], bool] = {}
-        self._consumer: RichAvroConsumer = None
-
-        self._make_consumer()
+        self._consumer: RichAvroConsumer = self._make_consumer()
 
     def _make_consumer(self) -> RichAvroConsumer:
         config = {
@@ -159,10 +157,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             },
             **self.config['kafka_opts']
         }
-        self._consumer = RichAvroConsumer(config)
+        consumer = RichAvroConsumer(config)
         logger.info(f'AvroConsumer created with config: {config}')
         # noinspection PyArgumentList
-        self._consumer.subscribe(self.config['topics'], on_assign=self._on_assign, on_revoke=self._on_revoke)
+        consumer.subscribe(self.config['topics'], on_assign=self._on_assign, on_revoke=self._on_revoke)
+        return consumer
 
     def _on_assign(self, _, partitions: List[TopicPartition]) -> None:
         """
