@@ -136,8 +136,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         self.config = config
 
         self.current_message: Message = None
-        self._offsets: Dict[Tuple[str, int], TopicPartition] = {}
-        self.eof_reached: Dict[Tuple[str, int], bool] = {}
+        self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
+        self.__eof_reached: Dict[Tuple[str, int], bool] = {}
 
         self._consumer: RichAvroConsumer = self._make_consumer()
 
@@ -174,17 +174,29 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         """
         logger.info(f'Assigned to partitions: {partitions}')
         for partition in partitions:
-            self.eof_reached[(partition.topic, partition.partition)] = False
+            self.__eof_reached[(partition.topic, partition.partition)] = False
 
     def _on_revoke(self, _, partitions: List[TopicPartition]):
         """
-        Handler for topic revision. When the consumer is revoked from topic partitions, during rebalance, then this
-        function is called and will delete the EOF reached flag for all revoked partitions.
+        Handler for revoked topic partitions. When the consumer is revoked from topic partitions during rebalance,
+        then this function is called. It will commit all offsets already handled and then delete the EOF-reached flag
+        and offsets for all revoked partitions.
         This callback is registered automatically on topic subscription.
         """
-        logger.info(f'Revoked from partitions: {partitions}')
+        logger.info(f'Revoked from partitions: {partitions}, committing offsets')
+        self._commit()
         for partition in partitions:
-            del self.eof_reached[(partition.topic, partition.partition)]
+            topic_partition = (partition.topic, partition.partition)
+            self.__eof_reached.pop(topic_partition, None)
+            self.__offsets.pop(topic_partition, None)
+
+    @property
+    def all_partitions_at_eof(self):
+        return all(self.__eof_reached.values())
+
+    @property
+    def has_partition_assignments(self):
+        return len(self._consumer.assignment()) > 0
 
     @property
     def last_message(self):
@@ -225,7 +237,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             self._on_error_received(msg)
 
     def _on_message_received(self, msg: Message):
-        self.eof_reached[(msg.topic(), msg.partition())] = False
+        self.__eof_reached[(msg.topic(), msg.partition())] = False
         self._safe_call_and_set_status(self.on_message_received, msg)
         self._update_offset_from_message(msg)
 
@@ -237,7 +249,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         topic_partition = msg_to_topic_partition(msg)
         topic_partition.offset += 1
         key = (topic_partition.topic, topic_partition.partition)
-        self._offsets[key] = topic_partition
+        self.__offsets[key] = topic_partition
 
     @abstractmethod
     def on_message_received(self, msg: Message) -> Optional[Status]:
@@ -255,7 +267,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             # last_message at this point only present if error code was _PARTITION_EOF
             assert self.current_message.error().code() == KafkaError._PARTITION_EOF, 'Message is not EOF!'
             key = (self.current_message.topic(), self.current_message.partition())
-            self.eof_reached[key] = True
+            self.__eof_reached[key] = True
         self._safe_call_and_set_status(self.on_no_message_received)
 
     def on_no_message_received(self):
@@ -328,7 +340,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         raise NotImplementedError("Need to implement and call this on a subclass")
 
     def _commit(self) -> None:
-        offsets = list(self._offsets.values())
+        offsets = list(self.__offsets.values())
         self._consumer.commit(offsets=offsets)
 
     def on_shutdown(self):

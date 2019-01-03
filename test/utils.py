@@ -307,7 +307,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         pprint(self.flushed_messages)
 
     def on_no_message_received(self) -> Optional[Status]:
-        if self.eof_reached != {} and all(self.eof_reached.values()):
+        if self.has_partition_assignments and self.all_partitions_at_eof:
             return Status.STOPPED
         return None
 
