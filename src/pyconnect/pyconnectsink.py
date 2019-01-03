@@ -181,7 +181,15 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         and offsets for all revoked partitions.
         This callback is registered automatically on topic subscription.
         """
+
+        # self.close will trigger this via self._consumer.close() which entails topic revocation
+        # however, we have the after_run_loop method to deal with flushing when we're finished and we certainly don't
+        # want to flush when we crashed, so don't do this
+        if self._status == Status.CRASHED:
+            logger.info(f'Revoked from partitions: {partitions}, handling skipped due to crash')
+            return
         logger.info(f'Revoked from partitions: {partitions}, triggering a flush')
+
         self._on_flush()
         for partition in partitions:
             topic_partition = (partition.topic, partition.partition)
