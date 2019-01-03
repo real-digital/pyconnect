@@ -133,7 +133,7 @@ def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
         '--create', '--topic', topic_id,
         '--partitions', str(partitions),
         '--replication-factor', '1',
-    ], stdout=subprocess.PIPE).stdout
+    ], stdout=subprocess.PIPE).stdout.decode()
     logger.info(creation_output)
 
     yield (topic_id, partitions)
@@ -182,7 +182,7 @@ def produced_messages(records, plain_avro_producer, topic, running_cluster_confi
     topic_highwater = subprocess.run([CLI_DIR / 'kafka-run-class.sh', 'kafka.tools.GetOffsetShell',
                                       '--broker-list', running_cluster_config['broker'], '--topic', topic_id,
                                       '--time', '-1', '--offsets', '1'],
-                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout
+                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout.decode()
     logger.info(f'Topic highwater:\n{topic_highwater}')
     assert len(topic_highwater.splitlines()) == partitions, 'Not all partitions present'
 
