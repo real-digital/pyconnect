@@ -24,6 +24,7 @@ logging.basicConfig(
     format='%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s',
     filename=str(TEST_DIR / 'test.log')
 )
+logger = logging.getLogger()
 
 
 def pytest_addoption(parser):
@@ -126,21 +127,23 @@ def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
     topic_id = rand_text(5)
     partitions = request.param
 
-    subprocess.call([
+    creation_output = subprocess.run([
         CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', running_cluster_config['zookeeper'],
         '--create', '--topic', topic_id,
         '--partitions', str(partitions),
-        '--replication-factor', '1'
-    ])
+        '--replication-factor', '1',
+    ], stdout=subprocess.PIPE).stdout
+    logger.info(creation_output)
 
     yield (topic_id, partitions)
 
-    subprocess.call([
+    deletion_output = subprocess.run([
         CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', running_cluster_config['zookeeper'],
         '--describe', '--topic', topic_id
-    ])
+    ], stdout=subprocess.PIPE)
+    logger.info(deletion_output)
 
 
 @pytest.fixture
@@ -180,7 +183,7 @@ def produced_messages(records, plain_avro_producer, topic, running_cluster_confi
                                       '--broker-list', running_cluster_config['broker'], '--topic', topic_id,
                                       '--time', '-1', '--offsets', '1'],
                                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout
-    print(topic_highwater)
+    logger.info(f'Topic highwater:\n{topic_highwater}')
     assert len(topic_highwater.splitlines()) == partitions, 'Not all partitions present'
 
     yield records

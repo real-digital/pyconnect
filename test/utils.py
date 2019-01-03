@@ -24,7 +24,7 @@ TEST_DIR: pathlib.Path = pathlib.Path(__file__).parent.absolute()
 ROOT_DIR: pathlib.Path = TEST_DIR.parent
 CLI_DIR: pathlib.Path = TEST_DIR / 'kafka' / 'bin'
 
-logger = logging.getLogger('test.utils')
+logger = logging.getLogger()
 
 
 class TestException(Exception):
@@ -83,7 +83,7 @@ class ConnectTestMixin:
             new_status = self.status
 
         if new_status == Status.CRASHED and self.ignore_crash:
-            new_status = Status.STOPPED
+            self._status_info = None
 
         return new_status
 
@@ -265,14 +265,13 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         """
         Utility function that prints consumer group status to stdout
         """
-        logger.info('Kafka consumer group status:')
-        subprocess.call([
+        group_status = subprocess.run([
             CLI_DIR / 'kafka-consumer-groups.sh',
             '--bootstrap-server', self.config['bootstrap_servers'][0],
             '--describe', '--group', self.config['group_id'],
             '--offsets', '--verbose'
-        ])
-        logger.info('--- END group status ---')
+        ], stdout=subprocess.PIPE).stdout
+        logger.info(f'Kafka consumer group status:\n{group_status}\n--- END group status ---')
 
     def on_startup(self) -> None:
         super().on_startup()

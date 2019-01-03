@@ -64,6 +64,7 @@ def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSi
     compare_lists_unordered(produced_messages, flushed_messages)
 
 
+@pytest.mark.e2e
 def test_two_sinks_one_failing(topic, produced_messages, connect_sink_factory):
     _, partitions = topic
     if partitions == 1:
@@ -90,8 +91,9 @@ def test_two_sinks_one_failing(topic, produced_messages, connect_sink_factory):
     running_sink_thread.join()
     failing_sink_thread.join()
 
-    assert running_sink.on_message_received.called
-    assert failing_sink.on_message_received.called
+    assert running_sink.on_message_received.called, "Running sink should have received messages"
+    assert failing_sink.on_message_received.called, "Failing sink should have received messages"
+    assert len(failing_sink.flushed_messages) == 2, "Only messages before crash should be flushed"
 
     flushed_messages = running_sink.flushed_messages + failing_sink.flushed_messages
     compare_lists_unordered(produced_messages, flushed_messages)
