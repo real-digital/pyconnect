@@ -24,7 +24,7 @@ TEST_DIR: pathlib.Path = pathlib.Path(__file__).parent.absolute()
 ROOT_DIR: pathlib.Path = TEST_DIR.parent
 CLI_DIR: pathlib.Path = TEST_DIR / 'kafka' / 'bin'
 
-logger = logging.getLogger()
+logger = logging.getLogger('test.utils')
 
 
 class TestException(Exception):

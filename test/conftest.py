@@ -24,7 +24,7 @@ logging.basicConfig(
     format='%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s',
     filename=str(TEST_DIR / 'test.log')
 )
-logger = logging.getLogger()
+logger = logging.getLogger('test.conftest')
 
 
 def pytest_addoption(parser):
@@ -138,12 +138,12 @@ def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
 
     yield (topic_id, partitions)
 
-    deletion_output = subprocess.run([
+    description_output = subprocess.run([
         CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', running_cluster_config['zookeeper'],
         '--describe', '--topic', topic_id
-    ], stdout=subprocess.PIPE)
-    logger.info(deletion_output)
+    ], stdout=subprocess.PIPE).stdout.decode()
+    logger.info(description_output)
 
 
 @pytest.fixture
