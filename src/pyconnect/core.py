@@ -152,11 +152,20 @@ class BaseConnector(metaclass=ABCMeta):
         :param kwargs: Keyword arguments to pass on to callback.
         """
         try:
-            new_status = callback(*args, **kwargs)
+            self._unsafe_call_and_set_status(callback, *args, **kwargs)
         except Exception as e:
             self._handle_exception(e)
-            return
 
+    def _unsafe_call_and_set_status(self, callback: Callable, *args, **kwargs) -> None:
+        """
+        Calls a callback and updates this connector's status *if and only if* the callback returns one.
+        This function does not capture Exceptions.
+
+        :param callback: Callback that shall be called.
+        :param args: Arguments to pass on to callback.
+        :param kwargs: Keyword arguments to pass on to callback.
+        """
+        new_status = callback(*args, **kwargs)
         if new_status is None:
             return
         elif isinstance(new_status, Status):
