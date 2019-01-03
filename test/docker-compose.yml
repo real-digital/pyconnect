@@ -27,6 +27,7 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_GROUP_MIN_SESSION_TIMEOUT_MS: 1000
 
   schema-registry:
     image: confluentinc/cp-schema-registry:5.0.0-beta30
