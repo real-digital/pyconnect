@@ -237,7 +237,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _on_message_received(self, msg: Message):
         self.__eof_reached[(msg.topic(), msg.partition())] = False
-        self._safe_call_and_set_status(self.on_message_received, msg)
+        self._unsafe_call_and_set_status(self.on_message_received, msg)
         self._update_offset_from_message(msg)
 
     def _update_offset_from_message(self, msg: Message):
@@ -267,7 +267,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             assert self.current_message.error().code() == KafkaError._PARTITION_EOF, 'Message is not EOF!'
             key = (self.current_message.topic(), self.current_message.partition())
             self.__eof_reached[key] = True
-        self._safe_call_and_set_status(self.on_no_message_received)
+        self._unsafe_call_and_set_status(self.on_no_message_received)
 
     def on_no_message_received(self):
         """
@@ -278,7 +278,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         pass
 
     def _on_error_received(self, msg: Message):
-        self._safe_call_and_set_status(self.on_error_received, msg)
+        self._unsafe_call_and_set_status(self.on_error_received, msg)
 
     def on_error_received(self, msg):
         """
