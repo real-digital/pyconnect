@@ -182,8 +182,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         and offsets for all revoked partitions.
         This callback is registered automatically on topic subscription.
         """
-        logger.info(f'Revoked from partitions: {partitions}, committing offsets')
-        self._commit()
+        logger.info(f'Revoked from partitions: {partitions}, triggering a flush')
+        self._on_flush()
         for partition in partitions:
             topic_partition = (partition.topic, partition.partition)
             self.__eof_reached.pop(topic_partition, None)
