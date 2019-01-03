@@ -1,3 +1,4 @@
+import threading
 from typing import Callable
 
 import pytest
@@ -60,4 +61,37 @@ def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSi
 
     flushed_messages.extend(connect_sink.flushed_messages)
 
+    compare_lists_unordered(produced_messages, flushed_messages)
+
+
+def test_two_sinks_one_failing(topic, produced_messages, connect_sink_factory):
+    _, partitions = topic
+    if partitions == 1:
+        return  # we need to test multiple consumers on multiple partitions for rebalancing issues
+    conf = {
+        'offset_commit_interval': 2,
+    }
+
+    failing_sink = connect_sink_factory(conf)
+    failing_sink.with_method_raising_after_n_calls('on_message_received', TestException(), 3)
+    failing_sink.with_wrapper_for('on_message_received')
+    failing_sink.ignore_crash = True
+
+    running_sink = connect_sink_factory(conf)
+    running_sink.with_wrapper_for('on_message_received')
+    running_sink.max_idle_count = 5
+
+    running_sink_thread = threading.Thread(target=running_sink.run, name='RUNNING Sink')
+    failing_sink_thread = threading.Thread(target=failing_sink.run, name=' FAILING Sink')
+
+    running_sink_thread.start()
+    failing_sink_thread.start()
+
+    running_sink_thread.join()
+    failing_sink_thread.join()
+
+    assert running_sink.on_message_received.called
+    assert failing_sink.on_message_received.called
+
+    flushed_messages = running_sink.flushed_messages + failing_sink.flushed_messages
     compare_lists_unordered(produced_messages, flushed_messages)
