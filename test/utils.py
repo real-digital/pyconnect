@@ -35,7 +35,7 @@ class TestException(Exception):
     You'd need `with pytest.raises(Exception):` vs. `with pytest.raises(TestException):`, where the former would pass
     even for TypeErr or ValueError that are not necessarily caused by the mock.
     """
-    __test__ = False
+    __test__ = False  # tell pytest that this is not a test class although it starts with 'Test'
 
 
 # noinspection PyAttributeOutsideInit

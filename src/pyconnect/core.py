@@ -33,6 +33,13 @@ class PyConnectException(Exception):
     pass
 
 
+class NoCrashInfo(PyConnectException):
+    """
+    Exception that says that a callback returned `Status.CRASHED` without supplying any exception for status_info.
+    """
+    pass
+
+
 class Status(Enum):
     """
     The status a connector may be in.
@@ -67,7 +74,7 @@ class BaseConnector(metaclass=ABCMeta):
 
     def __init__(self) -> None:
         self._status = Status.NOT_YET_RUNNING
-        self._status_info: Any = None
+        self._status_info: Optional[Exception] = None
 
     @property
     def is_running(self) -> bool:
@@ -159,7 +166,8 @@ class BaseConnector(metaclass=ABCMeta):
     def _unsafe_call_and_set_status(self, callback: Callable, *args, **kwargs) -> None:
         """
         Calls a callback and updates this connector's status *if and only if* the callback returns one.
-        This function does not capture Exceptions.
+        This function does not capture Exceptions. To the contrary: it even raises an exception if the `callback`
+        returned :enum:`Status.CRASHED`.
 
         :param callback: Callback that shall be called.
         :param args: Arguments to pass on to callback.
@@ -170,6 +178,10 @@ class BaseConnector(metaclass=ABCMeta):
             return
         elif isinstance(new_status, Status):
             self._status = new_status
+            if new_status == Status.CRASHED:
+                if self._status_info is None:
+                    self._status_info = NoCrashInfo(f'Callback {callback} returned Status CRASHED')
+                raise self._status_info
         else:
             raise RuntimeError(f'Callback {callback} needs to return Status or None but returned {type(new_status)}')
 
