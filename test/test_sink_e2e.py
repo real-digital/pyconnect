@@ -4,6 +4,7 @@ from typing import Callable
 import pytest
 
 from pyconnect.config import SinkConfig
+from pyconnect.core import Status
 from .utils import PyConnectTestSink, TestException, compare_lists_unordered
 
 ConnectSinkFactory = Callable[..., PyConnectTestSink]
@@ -76,14 +77,13 @@ def test_two_sinks_one_failing(topic, produced_messages, connect_sink_factory):
     failing_sink = connect_sink_factory(conf)
     failing_sink.with_method_raising_after_n_calls('on_message_received', TestException(), 3)
     failing_sink.with_wrapper_for('on_message_received')
-    failing_sink.ignore_crash = True
 
     running_sink = connect_sink_factory(conf)
     running_sink.with_wrapper_for('on_message_received')
     running_sink.max_idle_count = 5
 
     running_sink_thread = threading.Thread(target=running_sink.run, name='RUNNING Sink')
-    failing_sink_thread = threading.Thread(target=failing_sink.run, name=' FAILING Sink')
+    failing_sink_thread = threading.Thread(target=failing_sink.run, name='FAILING Sink')
 
     running_sink_thread.start()
     failing_sink_thread.start()
@@ -94,6 +94,9 @@ def test_two_sinks_one_failing(topic, produced_messages, connect_sink_factory):
     assert running_sink.on_message_received.called, "Running sink should have received messages"
     assert failing_sink.on_message_received.called, "Failing sink should have received messages"
     assert len(failing_sink.flushed_messages) == 2, "Only messages before crash should be flushed"
+    assert failing_sink.status == Status.CRASHED
+    assert isinstance(failing_sink.status_info, TestException)
+    assert running_sink.status == Status.STOPPED
 
     flushed_messages = running_sink.flushed_messages + failing_sink.flushed_messages
     compare_lists_unordered(produced_messages, flushed_messages)
