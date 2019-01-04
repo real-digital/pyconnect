@@ -17,12 +17,10 @@ from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.core import Status
 from test.utils import CLI_DIR, TEST_DIR, TestException, rand_text
 
-LOGFILE = TEST_DIR / 'test.log'
-LOGFILE.write_text('')
-
 logging.basicConfig(
     format='%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s',
-    filename=str(TEST_DIR / 'test.log')
+    filename=str(TEST_DIR / 'test.log'),
+    filemode='w'
 )
 logger = logging.getLogger('test.conftest')
 
