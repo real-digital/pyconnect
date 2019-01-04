@@ -31,7 +31,7 @@ uninstall-hosts:
 install-dev-env: install-system-packages install-virtualenv install-hosts install-hooks
 
 reset-cluster:
-	sudo docker-compose -f test/testenv-docker-compose.yml rm -f
+	sudo docker-compose -f test/docker-compose.yml rm -f
 
 boot-cluster: reset-cluster
 	@( \
@@ -41,14 +41,14 @@ boot-cluster: reset-cluster
 	  || \
 	( \
 	  (echo "Starting Cluster") && \
-	  (sudo docker-compose -f test/testenv-docker-compose.yml up --force-recreate -d) && \
+	  (sudo docker-compose -f test/docker-compose.yml up --force-recreate -d) && \
 	  (until (curl -s "http://rest-proxy:8082/topics" >/dev/null); do sleep 0.1s; done) \
 	)
 
 shutdown-cluster:
 	@( \
 	  (echo "Stopping Cluster") && \
-	  (sudo docker-compose -f test/testenv-docker-compose.yml down) \
+	  (sudo docker-compose -f test/docker-compose.yml down) \
 	)
 
 run-full-tests: boot-cluster
