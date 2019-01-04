@@ -319,9 +319,9 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         return True
 
     def _on_flush(self):
-        self._safe_call_and_set_status(self.on_flush)
+        self._unsafe_call_and_set_status(self.on_flush)
         if self._status != Status.CRASHED:
-            self._safe_call_and_set_status(self._commit)
+            self._unsafe_call_and_set_status(self._commit)
         else:
             logger.info('Commit skipped due to crash')
 
