@@ -1,25 +1,30 @@
 """
 This module contains utility functions and classes for testing.
 """
+import difflib
+import functools
+import logging
 import pathlib
 import random
 import string
 import subprocess
-from pprint import pprint
+from pprint import pformat
 from typing import Any, Dict, List, Optional, Tuple
-from unittest import TestCase, mock
+from unittest import mock
 
 import pytest
 from confluent_kafka.cimpl import Message
 
 from pyconnect.config import SourceConfig
-from pyconnect.core import Status, message_repr
+from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
 from pyconnect.pyconnectsource import PyConnectSource
 
-TEST_DIR = pathlib.Path(__file__).parent.absolute()
-ROOT_DIR = TEST_DIR.parent
-CLI_DIR = TEST_DIR / 'kafka' / 'bin'
+TEST_DIR: pathlib.Path = pathlib.Path(__file__).parent.absolute()
+ROOT_DIR: pathlib.Path = TEST_DIR.parent
+CLI_DIR: pathlib.Path = TEST_DIR / 'kafka' / 'bin'
+
+logger = logging.getLogger('test.utils')
 
 
 class TestException(Exception):
@@ -30,7 +35,7 @@ class TestException(Exception):
     You'd need `with pytest.raises(Exception):` vs. `with pytest.raises(TestException):`, where the former would pass
     even for TypeErr or ValueError that are not necessarily caused by the mock.
     """
-    __test__ = False
+    __test__ = False  # tell pytest that this is not a test class although it starts with 'Test'
 
 
 # noinspection PyAttributeOutsideInit
@@ -45,8 +50,8 @@ class ConnectTestMixin:
         super().__init__(conf)
         self.forced_status_after_run: Optional[Status] = None
         self.run_counter = 0
-        self.max_runs = 20
-        self._ignore_crash = False
+        self.max_runs = 200
+        self.ignore_crash = False
 
     def _run_loop(self) -> None:
         while self.is_running:
@@ -71,36 +76,16 @@ class ConnectTestMixin:
             if new_status is not None:
                 self._status = new_status
 
-    def on_crashed(self) -> Optional[Status]:
-        try:
-            new_status = super().on_crashed()
-        except Exception as e:
-            new_status = e
-
-        if hasattr(self, '_when_crashed'):
-            new_status = self._when_crashed
-
-        if isinstance(new_status, Exception):
-            raise new_status
-        return new_status
-
     def on_shutdown(self) -> Optional[Status]:
-        if self.status == Status.CRASHED and self._ignore_crash:
-            self._status = Status.STOPPED
-        return super().on_shutdown()
+        new_status = super().on_shutdown()
 
-    def when_crashed(self, return_value) -> 'ConnectTestMixin':
-        """
-        Sets fixed a return value for :meth:`pyconnect.core.BaseConnector.on_crash`.
-        If the value is an Exception, it will be raised.
+        if new_status is None:
+            new_status = self.status
 
-        Returns the connector so the method can be chained with others.
-        :param return_value: The value or exception to be returned
-                             or raised by :meth:`pyconnect.core.BaseConnector.on_crash`.
-        :return: self
-        """
-        self._when_crashed = return_value
-        return self
+        if new_status == Status.CRASHED and self.ignore_crash:
+            self._status_info = None
+
+        return new_status
 
     def with_wrapper_for(self, func: str) -> 'ConnectTestMixin':
         """
@@ -139,6 +124,7 @@ class ConnectTestMixin:
         counter = 0
         original_function = getattr(self, methname)
 
+        @functools.wraps(original_function)
         def wrapper_function(*args, **kwargs):
             nonlocal counter
             if counter == n_calls:
@@ -163,6 +149,7 @@ class ConnectTestMixin:
         counter = 0
         original_function = getattr(self, methname)
 
+        @functools.wraps(original_function)
         def wrapper_function(*args, **kwargs):
             nonlocal counter
             if counter == n_calls:
@@ -264,51 +251,58 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
     def __init__(self, sink_config) -> None:
         self.message_buffer: List[Tuple[Any, Any]] = []
         self.flushed_messages: List[Tuple[Any, Any]] = []
-        self.flush_interval = 5
+        self.flush_interval = sink_config['offset_commit_interval']
+        self.__idle_count = 0
+        self.max_idle_count = 1
         super().__init__(sink_config)
 
     def on_message_received(self, msg: Message) -> None:
-        print(f'Message received: {message_repr(msg)}')
         # noinspection PyArgumentList
         self.message_buffer.append((msg.key(), msg.value()))
+        self.__idle_count = 0
 
     def _check_status(self) -> None:
         """
         Utility function that prints consumer group status to stdout
         """
-        print('Kafka consumer group status:')
-        subprocess.call([
+        group_status = subprocess.run([
             CLI_DIR / 'kafka-consumer-groups.sh',
             '--bootstrap-server', self.config['bootstrap_servers'][0],
             '--describe', '--group', self.config['group_id'],
             '--offsets', '--verbose'
-        ])
+        ], stdout=subprocess.PIPE).stdout.decode()
+        logger.info(f'Kafka consumer group status:\n{group_status}\n--- END group status ---')
 
     def on_startup(self) -> None:
         super().on_startup()
-        print('######## CONSUMER STARUP #########')
-        print(f'Config: {self.config!r}')
+        logger.info('######## CONSUMER STARTUP #########')
+        logger.info(f'Config: {self.config!r}')
         self._check_status()
 
     def need_flush(self) -> bool:
         return len(self.message_buffer) == self.flush_interval
 
     def on_flush(self) -> None:
-        print('Flushing messages:')
-        pprint(self.message_buffer)
+        logger.debug('Flushing messages:\n' +
+                     pformat(self.message_buffer, indent=2))
         self.flushed_messages.extend(self.message_buffer)
         self.message_buffer.clear()
 
     def on_shutdown(self) -> None:
-        super().on_shutdown()
-        print('######## CONSUMER SHUTDOWN #########')
+        new_status = super().on_shutdown()
+        logger.info('######## CONSUMER SHUTDOWN #########')
         self._check_status()
-        print('----\nFlushed messages:')
-        pprint(self.flushed_messages)
+        logger.info('Flushed messages:\n' +
+                    pformat(self.flushed_messages, indent=2))
+        return new_status
 
     def on_no_message_received(self) -> Optional[Status]:
-        if self.eof_reached != {} and all(self.eof_reached.values()):
-            return Status.STOPPED
+        if self.has_partition_assignments and self.all_partitions_at_eof:
+            logger.info('All EOFs reached, consumer is idle')
+            if self.__idle_count >= self.max_idle_count:
+                logger.info('Idle count reached, stopping consumer')
+                return Status.STOPPED
+            self.__idle_count += 1
         return None
 
 
@@ -323,4 +317,13 @@ def rand_text(textlen: int) -> str:
 
 
 def compare_lists_unordered(list1, list2):
-    TestCase().assertCountEqual(list1, list2)
+    str1 = sorted((f'{elem}\n' for elem in list1))
+    str2 = sorted((f'{elem}\n' for elem in list2))
+    diffstr = ''.join(difflib.ndiff(str1, str2))
+    try:
+        assert len(list1) == len(list2), f'Lists are not equal:\n{diffstr}'
+        for elem in list1:
+            assert elem in list2, f'Lists are not equal:\n{diffstr}'
+    except AssertionError:
+        logger.exception('Logging Assertion Error')
+        raise

@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 
 from pyconnect.config import SinkConfig
+from pyconnect.core import NoCrashInfo
 from pyconnect.pyconnectsink import Status
 from .utils import PyConnectTestSink, TestException
 
@@ -95,9 +96,13 @@ def test_no_commit_if_flush_failed(run_once_sink: PyConnectTestSink, failing_cal
         run_once_sink.run()
     except TestException:
         pass
+    except NoCrashInfo:
+        pass
+    else:
+        pytest.fail('No Exception raised!')
 
     # test
-    assert mock.Mock, run_once_sink.on_flush.called
+    assert cast(mock.Mock, run_once_sink.on_flush).called
     assert not cast(mock.Mock, run_once_sink._consumer.commit).called
 
 
@@ -116,7 +121,7 @@ def test_commit_after_flush(message_factory, run_once_sink: PyConnectTestSink):
     assert run_once_sink._consumer.commit.called
 
 
-def test_last_message_is_set(message_factory, run_once_sink: PyConnectTestSink):
+def test_current_message_is_set(message_factory, run_once_sink: PyConnectTestSink):
     # setup
     msg = message_factory()
     run_once_sink._consumer.poll.return_value = msg
@@ -125,10 +130,10 @@ def test_last_message_is_set(message_factory, run_once_sink: PyConnectTestSink):
     run_once_sink.run()
 
     # test
-    assert run_once_sink.last_message is msg
+    assert run_once_sink.current_message is msg
 
 
-def test_last_message_is_unset(sink_factory: SinkFactory, message_factory):
+def test_current_message_is_unset(sink_factory: SinkFactory, message_factory):
     # setup
     msg = message_factory()
     connect_sink = sink_factory()
@@ -139,7 +144,7 @@ def test_last_message_is_unset(sink_factory: SinkFactory, message_factory):
         connect_sink.run()
 
     # test
-    assert connect_sink.last_message is None
+    assert connect_sink.current_message is None
 
 
 def test_status_info_is_set(sink_factory: SinkFactory, message_factory):
@@ -245,6 +250,10 @@ def test_no_commit_if_final_flush_failed(run_once_sink: PyConnectTestSink, faili
         run_once_sink.run()
     except TestException:
         pass
+    except NoCrashInfo:
+        pass
+    else:
+        pytest.fail('No Exception raised!')
 
     # test
     run_once_sink.on_flush.assert_called_once()
@@ -266,3 +275,25 @@ def test_flush_after_run(sink_factory: SinkFactory, message_factory):
     # test
     connect_sink._consumer.commit.assert_called_once()
     connect_sink.on_flush.assert_called_once()
+
+
+def test_no_msg_handling_after_failed_flush(sink_factory: SinkFactory, failing_callback: mock.Mock, message_factory):
+    connect_sink = sink_factory()
+    connect_sink.on_flush = failing_callback
+    connect_sink._consumer.poll.side_effect = [message_factory()] * 5 + [None]
+    connect_sink.on_no_message_received = mock.Mock(
+        return_value=Status.STOPPED)
+
+    connect_sink.on_message_received = mock.Mock(return_value=None)
+    connect_sink.need_flush = mock.Mock(return_value=True)
+
+    try:
+        connect_sink.run()
+    except TestException:
+        pass
+    except NoCrashInfo:
+        pass
+    else:
+        pytest.fail('No Exception raised!')
+
+    assert not connect_sink.on_message_received.called

@@ -1,4 +1,5 @@
 import itertools as it
+import logging
 import os
 import random
 import subprocess
@@ -15,6 +16,13 @@ from confluent_kafka.cimpl import KafkaError, Message
 from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.core import Status
 from test.utils import CLI_DIR, TEST_DIR, TestException, rand_text
+
+logging.basicConfig(
+    format='%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s',
+    filename=str(TEST_DIR / 'test.log'),
+    filemode='w'
+)
+logger = logging.getLogger('test.conftest')
 
 
 def pytest_addoption(parser):
@@ -53,7 +61,7 @@ def cluster_config() -> Dict[str, str]:
     for the kafka cluster.
     :return: A map from service to url.
     """
-    with open(TEST_DIR / 'testenv-docker-compose.yml', 'r') as infile:
+    with (TEST_DIR / 'docker-compose.yml').open('r') as infile:
         yml_config = yaml.load(infile)
 
     hosts = {
@@ -117,21 +125,23 @@ def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
     topic_id = rand_text(5)
     partitions = request.param
 
-    subprocess.call([
+    creation_output = subprocess.run([
         CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', running_cluster_config['zookeeper'],
         '--create', '--topic', topic_id,
         '--partitions', str(partitions),
-        '--replication-factor', '1'
-    ])
+        '--replication-factor', '1',
+    ], stdout=subprocess.PIPE).stdout.decode()
+    logger.info(creation_output)
 
     yield (topic_id, partitions)
 
-    subprocess.call([
+    description_output = subprocess.run([
         CLI_DIR / 'kafka-topics.sh',
         '--zookeeper', running_cluster_config['zookeeper'],
         '--describe', '--topic', topic_id
-    ])
+    ], stdout=subprocess.PIPE).stdout.decode()
+    logger.info(description_output)
 
 
 @pytest.fixture
@@ -170,8 +180,8 @@ def produced_messages(records, plain_avro_producer, topic, running_cluster_confi
     topic_highwater = subprocess.run([CLI_DIR / 'kafka-run-class.sh', 'kafka.tools.GetOffsetShell',
                                       '--broker-list', running_cluster_config['broker'], '--topic', topic_id,
                                       '--time', '-1', '--offsets', '1'],
-                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout
-    print(topic_highwater)
+                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout.decode()
+    logger.info(f'Topic highwater:\n{topic_highwater}')
     assert len(topic_highwater.splitlines()) == partitions, 'Not all partitions present'
 
     yield records

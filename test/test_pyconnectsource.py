@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 
 from pyconnect.config import SourceConfig
+from pyconnect.core import NoCrashInfo
 from .utils import PyConnectTestSource, TestException
 
 SourceFactory = Callable[..., PyConnectTestSource]
@@ -75,6 +76,10 @@ def test_no_run_if_seek_fails(source_factory: SourceFactory, failing_callback: m
         source.run()
     except TestException:
         pass
+    except NoCrashInfo:
+        pass
+    else:
+        pytest.fail('No Exception raised!')
 
     assert not cast(mock.Mock, source._run_once).called
     assert source.seek.called

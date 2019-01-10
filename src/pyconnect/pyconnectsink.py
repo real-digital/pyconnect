@@ -1,8 +1,9 @@
 import logging
 import struct
+import warnings
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
@@ -79,7 +80,7 @@ class RichAvroConsumer(AvroConsumer):
         self._current_value_schema_id = None
 
     @staticmethod
-    def extract_schema_id(message: Union[str, bytes, None]) -> int:
+    def extract_schema_id(message: bytes) -> int:
         _, schema_id = struct.unpack('>bI', message[:5])
         return schema_id
 
@@ -134,13 +135,12 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
 
-        self.last_message: Message = None
-        self._offsets: Dict[Tuple[str, int], TopicPartition] = {}
-        self.eof_reached: Dict[Tuple[str, int], bool] = {}
+        self.current_message: Optional[Message] = None
+        self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
+        self.__eof_reached: Dict[Tuple[str, int], bool] = {}
+        self._consumer: RichAvroConsumer = self._make_consumer()
 
-        self._consumer: AvroConsumer = self._make_consumer()
-
-    def _make_consumer(self) -> AvroConsumer:
+    def _make_consumer(self) -> RichAvroConsumer:
         config = {
             "bootstrap.servers": ','.join(self.config['bootstrap_servers']),
             "group.id": self.config['group_id'],
@@ -158,10 +158,9 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             **self.config['kafka_opts']
         }
         consumer = RichAvroConsumer(config)
-        logging.info(f'AvroConsumer created with config: {config}')
+        logger.info(f'AvroConsumer created with config: {config}')
         # noinspection PyArgumentList
         consumer.subscribe(self.config['topics'], on_assign=self._on_assign, on_revoke=self._on_revoke)
-
         return consumer
 
     def _on_assign(self, _, partitions: List[TopicPartition]) -> None:
@@ -173,26 +172,53 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         """
         logger.info(f'Assigned to partitions: {partitions}')
         for partition in partitions:
-            self.eof_reached[(partition.topic, partition.partition)] = False
+            self.__eof_reached[(partition.topic, partition.partition)] = False
 
     def _on_revoke(self, _, partitions: List[TopicPartition]):
         """
-        Handler for topic revision. When the consumer is revoked from topic partitions, during rebalance, then this
-        function is called and will delete the EOF reached flag for all revoked partitions.
+        Handler for revoked topic partitions. When the consumer is revoked from topic partitions during rebalance,
+        then this function is called. It will commit all offsets already handled and then delete the EOF-reached flag
+        and offsets for all revoked partitions.
         This callback is registered automatically on topic subscription.
         """
-        logger.info(f'Revoked from partitions: {partitions}')
+
+        # self.close will trigger this via self._consumer.close() which entails topic revocation
+        # however, we have the after_run_loop method to deal with flushing when we're finished and we certainly don't
+        # want to flush when we crashed, so don't do this
+        if self._status == Status.CRASHED:
+            logger.info(f'Revoked from partitions: {partitions}, handling skipped due to crash')
+            return
+        logger.info(f'Revoked from partitions: {partitions}, triggering a flush')
+
+        self._on_flush()
         for partition in partitions:
-            del self.eof_reached[(partition.topic, partition.partition)]
+            topic_partition = (partition.topic, partition.partition)
+            self.__eof_reached.pop(topic_partition, None)
+            self.__offsets.pop(topic_partition, None)
+
+    @property
+    def all_partitions_at_eof(self):
+        return all(self.__eof_reached.values())
+
+    @property
+    def has_partition_assignments(self):
+        return len(self._consumer.assignment()) > 0
+
+    @property
+    def last_message(self):
+        # TODO: when bumping to next major release, remove this property
+        warnings.warn("'last_message' will be permanently renamed to 'current_message' in next major release",
+                      DeprecationWarning)
+        return self.current_message
 
     def _run_once(self) -> None:
         try:
-            self.last_message = None
+            self.current_message = None
             self._status_info = None
             msg = self._consumer.poll(self.config['poll_timeout'])
-            self.last_message = msg
-            self._call_right_handler_for_message(msg)
+            self.current_message = msg
             self._flush_if_needed()
+            self._call_right_handler_for_message(msg)
         except Exception as e:
             self._handle_exception(e)
         if self.status == Status.CRASHED:
@@ -217,9 +243,9 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             self._on_error_received(msg)
 
     def _on_message_received(self, msg: Message):
-        self.eof_reached[(msg.topic(), msg.partition())] = False
+        self.__eof_reached[(msg.topic(), msg.partition())] = False
+        self._unsafe_call_and_set_status(self.on_message_received, msg)
         self._update_offset_from_message(msg)
-        self._safe_call_and_set_status(self.on_message_received, msg)
 
     def _update_offset_from_message(self, msg: Message):
         """
@@ -229,7 +255,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         topic_partition = msg_to_topic_partition(msg)
         topic_partition.offset += 1
         key = (topic_partition.topic, topic_partition.partition)
-        self._offsets[key] = topic_partition
+        logger.debug(f'Updating offset: {topic_partition}')
+        self.__offsets[key] = topic_partition
 
     @abstractmethod
     def on_message_received(self, msg: Message) -> Optional[Status]:
@@ -243,12 +270,12 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         raise NotImplementedError("Need to implement and call this on a subclass")
 
     def _on_no_message_received(self):
-        if self.last_message is not None:
+        if self.current_message is not None:
             # last_message at this point only present if error code was _PARTITION_EOF
-            assert self.last_message.error().code() == KafkaError._PARTITION_EOF, 'Message is not EOF!'
-            key = (self.last_message.topic(), self.last_message.partition())
-            self.eof_reached[key] = True
-        self._safe_call_and_set_status(self.on_no_message_received)
+            assert self.current_message.error().code() == KafkaError._PARTITION_EOF, 'Message is not EOF!'
+            key = (self.current_message.topic(), self.current_message.partition())
+            self.__eof_reached[key] = True
+        self._unsafe_call_and_set_status(self.on_no_message_received)
 
     def on_no_message_received(self):
         """
@@ -259,7 +286,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         pass
 
     def _on_error_received(self, msg: Message):
-        self._safe_call_and_set_status(self.on_error_received, msg)
+        self._unsafe_call_and_set_status(self.on_error_received, msg)
 
     def on_error_received(self, msg):
         """
@@ -279,8 +306,10 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def need_flush(self):
         """
-        Called regularly at the end of each run loop cycle in order to determine if
-        :meth:`pyconnect.pyconnectsink.PyConnectSink.on_flush` needs to be called.
+        Called regularly at the start of each run loop cycle after
+        :attr:`pyconnect.pyconnectsink.PyConnectSink.current_message` has been set to the newly arrived message.
+        This function determines whether :meth:`pyconnect.pyconnectsink.PyConnectSink.on_flush` needs to be run
+        before the message handler is called.
 
         Default behaviour is to return True all the time so every message is flushed and its offset committed.
 
@@ -290,9 +319,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         return True
 
     def _on_flush(self):
-        self._safe_call_and_set_status(self.on_flush)
+        self._unsafe_call_and_set_status(self.on_flush)
         if self._status != Status.CRASHED:
-            self._safe_call_and_set_status(self._commit)
+            self._unsafe_call_and_set_status(self._commit)
+        else:
+            logger.info('Commit skipped due to crash')
 
     @abstractmethod
     def on_flush(self) -> Optional[Status]:
@@ -300,7 +331,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         This callback is called whenever the sink is supposed to flush all messages it has consumed so far.
         There are two situations in which this is the case:
 
-            1. At the end of a run loop cycle, when :meth:`pyconnect.pyconnectsink.PyConnectSink.need_flush` returns
+            1. At the start of a run loop cycle, when :meth:`pyconnect.pyconnectsink.PyConnectSink.need_flush` returns
                `True`.
 
             2. After the run loop, during :meth:`pyconnect.pyconnectsink.PyConnectSink.on_shutdown` if it wasn't
@@ -318,7 +349,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         raise NotImplementedError("Need to implement and call this on a subclass")
 
     def _commit(self) -> None:
-        offsets = list(self._offsets.values())
+        offsets = list(self.__offsets.values())
+        logger.info(f'Committing offsets: {offsets}')
         self._consumer.commit(offsets=offsets)
 
     def on_shutdown(self):

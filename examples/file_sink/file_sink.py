@@ -6,7 +6,7 @@ from typing import List, cast
 from confluent_kafka.cimpl import Message
 
 from pyconnect import PyConnectSink, SinkConfig
-from pyconnect.core import Status, message_repr
+from pyconnect.core import Status
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,6 @@ class FileSink(PyConnectSink):
         self._buffer: List[Message] = []
 
     def on_message_received(self, msg: Message) -> None:
-        logger.debug(f'Message Received: {message_repr(msg)}')
         self._buffer.append(msg)
 
     def on_startup(self):
@@ -65,8 +64,7 @@ class FileSink(PyConnectSink):
         self._buffer.clear()
 
     def on_no_message_received(self):
-        # TODO the following should probably be two attributes like 'has_subscriptions' and 'all_partitions_at_eof'
-        if len(self.eof_reached) > 0 and all(self.eof_reached.values()):
+        if self.has_partition_assignments and self.all_partitions_at_eof:
             logger.info('EOF reached, stopping.')
             return Status.STOPPED
         return None
