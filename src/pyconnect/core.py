@@ -149,7 +149,7 @@ class BaseConnector(metaclass=ABCMeta):
         finally:
             self.close()
 
-    def _safe_call_and_set_status(self, callback: Callable, *args, **kwargs) -> None:
+    def _safe_call_and_set_status(self, callback: Callable[..., Optional[Status]], *args, **kwargs) -> None:
         """
         Safely calls a callback and handles any exceptions it raises. Will also update this connector's status *if and
         only if* the callback returns one or fails completely.
@@ -163,7 +163,7 @@ class BaseConnector(metaclass=ABCMeta):
         except Exception as e:
             self._handle_exception(e)
 
-    def _unsafe_call_and_set_status(self, callback: Callable, *args, **kwargs) -> None:
+    def _unsafe_call_and_set_status(self, callback: Callable[..., Optional[Status]], *args, **kwargs) -> None:
         """
         Calls a callback and updates this connector's status *if and only if* the callback returns one.
         This function does not capture Exceptions. To the contrary: it even raises an exception if the `callback`
