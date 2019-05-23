@@ -58,7 +58,7 @@ def cluster_config() -> Dict[str, str]:
     :return: A map from service to url.
     """
     with (TEST_DIR / "docker-compose.yml").open("r") as infile:
-        yml_config = yaml.load(infile)
+        yml_config = yaml.safe_load(infile)
 
     hosts = {"broker": "", "schema-registry": "", "rest-proxy": "", "zookeeper": ""}
 
