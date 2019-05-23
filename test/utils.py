@@ -22,9 +22,9 @@ from pyconnect.pyconnectsource import PyConnectSource
 
 TEST_DIR: pathlib.Path = pathlib.Path(__file__).parent.absolute()
 ROOT_DIR: pathlib.Path = TEST_DIR.parent
-CLI_DIR: pathlib.Path = TEST_DIR / 'kafka' / 'bin'
+CLI_DIR: pathlib.Path = TEST_DIR / "kafka" / "bin"
 
-logger = logging.getLogger('test.utils')
+logger = logging.getLogger("test.utils")
 
 
 class TestException(Exception):
@@ -35,6 +35,7 @@ class TestException(Exception):
     You'd need `with pytest.raises(Exception):` vs. `with pytest.raises(TestException):`, where the former would pass
     even for TypeErr or ValueError that are not necessarily caused by the mock.
     """
+
     __test__ = False  # tell pytest that this is not a test class although it starts with 'Test'
 
 
@@ -56,13 +57,15 @@ class ConnectTestMixin:
     def _run_loop(self) -> None:
         while self.is_running:
             if self.run_counter >= self.max_runs:
-                pytest.fail('Runlimit Reached! Forgot to force stop?')
+                pytest.fail("Runlimit Reached! Forgot to force stop?")
             self.run_counter += 1
 
             self._run_once()
-            if self._status == Status.CRASHED and \
-                    self._status_info is not None and \
-                    not isinstance(self._status_info, TestException):
+            if (
+                self._status == Status.CRASHED
+                and self._status_info is not None
+                and not isinstance(self._status_info, TestException)
+            ):
                 raise self._status_info
 
             if isinstance(self.forced_status_after_run, list):
@@ -87,7 +90,7 @@ class ConnectTestMixin:
 
         return new_status
 
-    def with_wrapper_for(self, func: str) -> 'ConnectTestMixin':
+    def with_wrapper_for(self, func: str) -> "ConnectTestMixin":
         """
         Creates a mock that wraps the given method.
 
@@ -99,7 +102,7 @@ class ConnectTestMixin:
         setattr(self, func, mock.Mock(name=func, wraps=old_func))
         return self
 
-    def with_mock_for(self, func: str) -> 'ConnectTestMixin':
+    def with_mock_for(self, func: str) -> "ConnectTestMixin":
         """
         Creates a mock that replaces the given method.
 
@@ -110,8 +113,9 @@ class ConnectTestMixin:
         setattr(self, func, mock.Mock(name=func))
         return self
 
-    def with_method_raising_after_n_calls(self, methname: str,
-                                          exception: Exception, n_calls: int) -> 'ConnectTestMixin':
+    def with_method_raising_after_n_calls(
+        self, methname: str, exception: Exception, n_calls: int
+    ) -> "ConnectTestMixin":
         """
         Makes the method `methname` raise the exception `exception` after it has been called `n_called` times.
 
@@ -135,8 +139,9 @@ class ConnectTestMixin:
         setattr(self, methname, wrapper_function)
         return self
 
-    def with_method_returning_after_n_calls(self, methname: str,
-                                            return_value: Any, n_calls: int) -> 'ConnectTestMixin':
+    def with_method_returning_after_n_calls(
+        self, methname: str, return_value: Any, n_calls: int
+    ) -> "ConnectTestMixin":
         """
         Makes the method `methname` return the value `return_value` after it has been called `n_called` times.
 
@@ -180,7 +185,7 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
             raise self._when_eof
         return self._when_eof
 
-    def with_records(self, records: List[Tuple[Any, Any]]) -> 'PyConnectTestSource':
+    def with_records(self, records: List[Tuple[Any, Any]]) -> "PyConnectTestSource":
         """
         Used to set this PyConnectTestSource's records to `records`.
 
@@ -191,7 +196,7 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
         self.records = records
         return self
 
-    def when_eof(self, return_value) -> 'PyConnectTestSource':
+    def when_eof(self, return_value) -> "PyConnectTestSource":
         """
         Sets fixed a return value for :meth:`pyconnect.pyconnectsource.PyConnectSource.on_eof`.
         If the value is an Exception, it will be raised.
@@ -204,7 +209,7 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
         self._when_eof = return_value
         return self
 
-    def with_committed_offset(self, offset: Any) -> 'PyConnectTestSource':
+    def with_committed_offset(self, offset: Any) -> "PyConnectTestSource":
         """
         Used to overwrite the commited offset (i.e. the offset it will use to start reading from).
 
@@ -217,7 +222,7 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
         return self
 
     def _get_committed_offset(self) -> Any:
-        if hasattr(self, '_committed_offset'):
+        if hasattr(self, "_committed_offset"):
             return self._committed_offset
         return super()._get_committed_offset()
 
@@ -251,7 +256,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
     def __init__(self, sink_config) -> None:
         self.message_buffer: List[Tuple[Any, Any]] = []
         self.flushed_messages: List[Tuple[Any, Any]] = []
-        self.flush_interval = sink_config['offset_commit_interval']
+        self.flush_interval = sink_config["offset_commit_interval"]
         self.__idle_count = 0
         self.max_idle_count = 1
         super().__init__(sink_config)
@@ -265,42 +270,47 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         """
         Utility function that prints consumer group status to stdout
         """
-        group_status = subprocess.run([
-            CLI_DIR / 'kafka-consumer-groups.sh',
-            '--bootstrap-server', self.config['bootstrap_servers'][0],
-            '--describe', '--group', self.config['group_id'],
-            '--offsets', '--verbose'
-        ], stdout=subprocess.PIPE).stdout.decode()
-        logger.info(f'Kafka consumer group status:\n{group_status}\n--- END group status ---')
+        group_status = subprocess.run(
+            [
+                CLI_DIR / "kafka-consumer-groups.sh",
+                "--bootstrap-server",
+                self.config["bootstrap_servers"][0],
+                "--describe",
+                "--group",
+                self.config["group_id"],
+                "--offsets",
+                "--verbose",
+            ],
+            stdout=subprocess.PIPE,
+        ).stdout.decode()
+        logger.info(f"Kafka consumer group status:\n{group_status}\n--- END group status ---")
 
     def on_startup(self) -> None:
         super().on_startup()
-        logger.info('######## CONSUMER STARTUP #########')
-        logger.info(f'Config: {self.config!r}')
+        logger.info("######## CONSUMER STARTUP #########")
+        logger.info(f"Config: {self.config!r}")
         self._check_status()
 
     def need_flush(self) -> bool:
         return len(self.message_buffer) == self.flush_interval
 
     def on_flush(self) -> None:
-        logger.debug('Flushing messages:\n' +
-                     pformat(self.message_buffer, indent=2))
+        logger.debug("Flushing messages:\n" + pformat(self.message_buffer, indent=2))
         self.flushed_messages.extend(self.message_buffer)
         self.message_buffer.clear()
 
     def on_shutdown(self) -> None:
         new_status = super().on_shutdown()
-        logger.info('######## CONSUMER SHUTDOWN #########')
+        logger.info("######## CONSUMER SHUTDOWN #########")
         self._check_status()
-        logger.info('Flushed messages:\n' +
-                    pformat(self.flushed_messages, indent=2))
+        logger.info("Flushed messages:\n" + pformat(self.flushed_messages, indent=2))
         return new_status
 
     def on_no_message_received(self) -> Optional[Status]:
         if self.has_partition_assignments and self.all_partitions_at_eof:
-            logger.info('All EOFs reached, consumer is idle')
+            logger.info("All EOFs reached, consumer is idle")
             if self.__idle_count >= self.max_idle_count:
-                logger.info('Idle count reached, stopping consumer')
+                logger.info("Idle count reached, stopping consumer")
                 return Status.STOPPED
             self.__idle_count += 1
         return None
@@ -313,17 +323,17 @@ def rand_text(textlen: int) -> str:
     :param textlen: Length of the string that shall be returned.
     :return: Random string.
     """
-    return ''.join(random.choices(string.ascii_uppercase, k=textlen))
+    return "".join(random.choices(string.ascii_uppercase, k=textlen))
 
 
 def compare_lists_unordered(list1, list2):
-    str1 = sorted((f'{elem}\n' for elem in list1))
-    str2 = sorted((f'{elem}\n' for elem in list2))
-    diffstr = ''.join(difflib.ndiff(str1, str2))
+    str1 = sorted((f"{elem}\n" for elem in list1))
+    str2 = sorted((f"{elem}\n" for elem in list2))
+    diffstr = "".join(difflib.ndiff(str1, str2))
     try:
-        assert len(list1) == len(list2), f'Lists are not equal:\n{diffstr}'
+        assert len(list1) == len(list2), f"Lists are not equal:\n{diffstr}"
         for elem in list1:
-            assert elem in list2, f'Lists are not equal:\n{diffstr}'
+            assert elem in list2, f"Lists are not equal:\n{diffstr}"
     except AssertionError:
-        logger.exception('Logging Assertion Error')
+        logger.exception("Logging Assertion Error")
         raise

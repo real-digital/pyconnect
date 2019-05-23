@@ -1,7 +1,8 @@
 [flake8]
-ignore = E999
+ignore = E203, E266, E501, W503
 exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,*.pkl,*.json,*.csv,.venv,pre-commit
 max-line-length=119
 max-complexity=10
 import-order-style=pycharm
 application-import-names=pyconnect,test
+select = B,C,E,F,W,T4,B9

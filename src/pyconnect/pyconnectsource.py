@@ -33,8 +33,8 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         messages and producer offsets.
         """
         config = {
-            'bootstrap.servers': ','.join(self.config['bootstrap_servers']),
-            'schema.registry.url': self.config['schema_registry']
+            "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
+            "schema.registry.url": self.config["schema_registry"],
         }
         return AvroProducer(config)
 
@@ -44,17 +44,15 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         committed producer offsets.
         """
         config = {
-            'bootstrap.servers': ','.join(self.config['bootstrap_servers']),
-            'schema.registry.url': self.config['schema_registry'],
-            'enable.auto.commit': False,
-            'offset.store.method': 'none',
-            'group.id': f'{self.config["offset_topic"]}_fetcher',
-            'default.topic.config': {
-                'auto.offset.reset': 'latest'
-            },
+            "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
+            "schema.registry.url": self.config["schema_registry"],
+            "enable.auto.commit": False,
+            "offset.store.method": "none",
+            "group.id": f'{self.config["offset_topic"]}_fetcher',
+            "default.topic.config": {"auto.offset.reset": "latest"},
         }
         offset_consumer = AvroConsumer(config)
-        offset_consumer.assign([TopicPartition(self.config['offset_topic'], 0, OFFSET_END)])
+        offset_consumer.assign([TopicPartition(self.config["offset_topic"], 0, OFFSET_END)])
 
         return offset_consumer
 
@@ -75,11 +73,11 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
 
         offset_msg = self._offset_consumer.poll(timeout=30)
         if offset_msg is None:
-            raise PyConnectException('Offset could not be fetched')
+            raise PyConnectException("Offset could not be fetched")
         if offset_msg.error() is None:
             return offset_msg.value()
         if offset_msg.error().code() != KafkaError._PARTITION_EOF:
-            raise PyConnectException(f'Kafka library returned error: {offset_msg.err().name()}')
+            raise PyConnectException(f"Kafka library returned error: {offset_msg.err().name()}")
         return None
 
     def _seek(self, idx: Any) -> None:
@@ -128,10 +126,13 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         """
         self._create_schemas_if_necessary(key, value)
 
-        self._producer.produce(key=key, value=value,
-                               key_schema=self._key_schema,
-                               value_schema=self._value_schema,
-                               topic=self.config['topic'])
+        self._producer.produce(
+            key=key,
+            value=value,
+            key_schema=self._key_schema,
+            value_schema=self._value_schema,
+            topic=self.config["topic"],
+        )
 
     def _create_schemas_if_necessary(self, key, value) -> None:
         """
@@ -172,8 +173,9 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         if self._offset_schema is None:
             self._offset_schema = to_value_schema(idx)
 
-        self._producer.produce(topic=self.config['offset_topic'], key=None, value=idx,
-                               value_schema=self._offset_schema)
+        self._producer.produce(
+            topic=self.config["offset_topic"], key=None, value=idx, value_schema=self._offset_schema
+        )
         self._producer.flush()
 
     @abstractmethod

@@ -13,15 +13,18 @@ SinkFactory = Callable[..., PyConnectTestSink]
 
 @pytest.fixture
 def sink_factory():
-    conf = SinkConfig(dict(
-        bootstrap_servers='localhost',
-        schema_registry='localhost',
-        offset_commit_interval=1,
-        group_id='group_id',
-        poll_timeout=1,
-        topics=''
-    ))
-    with mock.patch('pyconnect.pyconnectsink.RichAvroConsumer', autospec=True):
+    conf = SinkConfig(
+        dict(
+            bootstrap_servers="localhost",
+            schema_registry="localhost",
+            offset_commit_interval=1,
+            group_id="group_id",
+            poll_timeout=1,
+            topics="",
+        )
+    )
+    with mock.patch("pyconnect.pyconnectsink.RichAvroConsumer", autospec=True):
+
         def sink_factory_():
             sink = PyConnectTestSink(conf)
             sink._consumer.poll.return_value = None
@@ -51,7 +54,7 @@ def test_callbacks_are_called(sink_factory: SinkFactory, message_factory, error_
         on_error_received=mock.Mock(return_value=None),
         on_crash_during_run=mock.Mock(return_value=None),
         on_startup=mock.Mock(return_value=None),
-        on_shutdown=mock.Mock(return_value=None)
+        on_shutdown=mock.Mock(return_value=None),
     )
     patcher.start()
 
@@ -62,12 +65,7 @@ def test_callbacks_are_called(sink_factory: SinkFactory, message_factory, error_
     # then empty message
     # then error message
     # then raise exception
-    connect_sink._consumer.poll.side_effect = [
-        msg,
-        None,
-        error_msg,
-        TestException()
-    ]
+    connect_sink._consumer.poll.side_effect = [msg, None, error_msg, TestException()]
 
     # perform
     with pytest.raises(TestException):
@@ -99,7 +97,7 @@ def test_no_commit_if_flush_failed(run_once_sink: PyConnectTestSink, failing_cal
     except NoCrashInfo:
         pass
     else:
-        pytest.fail('No Exception raised!')
+        pytest.fail("No Exception raised!")
 
     # test
     assert cast(mock.Mock, run_once_sink.on_flush).called
@@ -189,16 +187,14 @@ def test_crash_handler_to_the_rescue(sink_factory: SinkFactory, message_factory,
     connect_sink.on_no_message_received = failing_callback
 
     connect_sink.on_crash_during_run = mock.Mock(return_value=Status.RUNNING)
-    connect_sink.on_message_received = mock.Mock(
-        side_effect=[None, Status.STOPPED])
+    connect_sink.on_message_received = mock.Mock(side_effect=[None, Status.STOPPED])
 
     # perform
     connect_sink.run()
 
     # test
     connect_sink.on_crash_during_run.assert_called_once()
-    connect_sink.on_message_received.assert_has_calls([
-        mock.call(msg1), mock.call(msg2)])
+    connect_sink.on_message_received.assert_has_calls([mock.call(msg1), mock.call(msg2)])
     assert connect_sink._status == Status.STOPPED
 
 
@@ -253,7 +249,7 @@ def test_no_commit_if_final_flush_failed(run_once_sink: PyConnectTestSink, faili
     except NoCrashInfo:
         pass
     else:
-        pytest.fail('No Exception raised!')
+        pytest.fail("No Exception raised!")
 
     # test
     run_once_sink.on_flush.assert_called_once()
@@ -264,8 +260,7 @@ def test_flush_after_run(sink_factory: SinkFactory, message_factory):
     # setup
     connect_sink = sink_factory()
     connect_sink._consumer.poll.side_effect = [message_factory()] * 5 + [None]
-    connect_sink.on_no_message_received = mock.Mock(
-        return_value=Status.STOPPED)
+    connect_sink.on_no_message_received = mock.Mock(return_value=Status.STOPPED)
     connect_sink.on_flush = mock.Mock(return_value=None)
     connect_sink.need_flush = mock.Mock(return_value=False)
 
@@ -281,8 +276,7 @@ def test_no_msg_handling_after_failed_flush(sink_factory: SinkFactory, failing_c
     connect_sink = sink_factory()
     connect_sink.on_flush = failing_callback
     connect_sink._consumer.poll.side_effect = [message_factory()] * 5 + [None]
-    connect_sink.on_no_message_received = mock.Mock(
-        return_value=Status.STOPPED)
+    connect_sink.on_no_message_received = mock.Mock(return_value=Status.STOPPED)
 
     connect_sink.on_message_received = mock.Mock(return_value=None)
     connect_sink.need_flush = mock.Mock(return_value=True)
@@ -294,6 +288,6 @@ def test_no_msg_handling_after_failed_flush(sink_factory: SinkFactory, failing_c
     except NoCrashInfo:
         pass
     else:
-        pytest.fail('No Exception raised!')
+        pytest.fail("No Exception raised!")
 
     assert not connect_sink.on_message_received.called
