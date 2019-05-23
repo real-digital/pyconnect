@@ -4,8 +4,7 @@ cache: pip
 env:
 - TEST_CMD="pytest tests/ --run-e2e --doctest-modules"
 before_install:
-- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O
-  kafka.tgz
+- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
 - nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties  &"
 - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
