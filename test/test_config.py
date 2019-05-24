@@ -10,7 +10,7 @@ from pyconnect.config import BaseConfig, SanityError, SinkConfig, _checkstr_to_c
 # TODO add tests for the other config loaders
 def test_env_loader():
     env_vars = {
-        "PYCONNECT_BOOTSTRAP_SERVERS": "broker:9092",
+        "PYCONNECT_BOOTSTRAP_SERVERS": "localhost:9092",
         "PYCONNECT_SCHEMA_REGISTRY": "schema-registry:8082",
         "PYCONNECT_TOPICS": "testtopic",
         "PYCONNECT_GROUP_ID": "testgroup",
