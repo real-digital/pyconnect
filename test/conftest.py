@@ -25,6 +25,10 @@ logging.basicConfig(
 logger = logging.getLogger("test.conftest")
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "e2e: mark test to run only during end to end tests")
+
+
 def pytest_addoption(parser):
     parser.addoption("--run-e2e", action="store_true", default=False, help="run end to end tests")
 
