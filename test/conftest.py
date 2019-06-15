@@ -67,7 +67,7 @@ def cluster_config() -> Dict[str, str]:
         hosts[service] = f"{service}:{port}"
 
     for service in hosts.keys():
-        env_var = (service + "_url").upper()
+        env_var = (service + "_url").upper().replace('-', '_')
         if env_var in os.environ:
             hosts[service] = os.environ[env_var]
 
