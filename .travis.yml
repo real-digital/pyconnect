@@ -12,7 +12,7 @@ before_install:
 - mkdir -p confluent-community && tar xzf confluent-community.tgz -C confluent-community --strip-components 1
 - confluent-community/bin/zookeeper-server-start -daemon confluent-community/etc/kafka/zookeeper.properties
 - confluent-community/bin/kafka-server-start -daemon confluent-community/etc/kafka/server.properties
-- confluent-community/bin/schema-registry-server-start -daemon confluent-community/etc/schema-registry/schema-registry.properties
+- confluent-community/bin/schema-registry-start -daemon confluent-community/etc/schema-registry/schema-registry.properties
 - bash -c "scripts/wait-for-it.sh ${BROKER_URL}"
 - bash -c "scripts/wait-for-it.sh ${ZOOKEEPER_URL}"
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL}"
