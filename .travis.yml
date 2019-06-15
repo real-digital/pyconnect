@@ -2,14 +2,20 @@ dist: xenial
 language: python
 cache: pip
 env:
-- TEST_CMD="pytest test/ -vv --run-e2e --doctest-modules" BROKER_URL="localhost:9092" ZOOKEEPER_URL="localhost:2181"
+- >
+  TEST_CMD="pytest test/ -vv --run-e2e --doctest-modules"
+  BROKER_URL="localhost:9092"
+  ZOOKEEPER_URL="localhost:2181"
+  SCHEMA_REGISTRY_URL="localhost:8081"
 before_install:
-- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
-- mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties  &"
-- nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
+- wget http://packages.confluent.io/archive/5.2/confluent-community-5.2.1-2.12.tar.gz -O confluent-community.tgz
+- mkdir -p confluent-community && tar xzf confluent-community.tgz -C confluent-community --strip-components 1
+- confluent-community/bin/zookeeper-server-start -daemon confluent-community/etc/kafka/zookeeper.properties
+- confluent-community/bin/kafka-server-start -daemon confluent-community/etc/kafka/server.properties
+- confluent-community/bin/schema-registry-server-start -daemon confluent-community/etc/schema-registry/schema-registry.properties
 - bash -c "scripts/wait-for-it.sh ${BROKER_URL}"
 - bash -c "scripts/wait-for-it.sh ${ZOOKEEPER_URL}"
+- bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL}"
 install:
 - pip install coverage coveralls flake8 pipenv
 - pipenv install --system --dev --deploy
