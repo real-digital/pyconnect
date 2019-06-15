@@ -2,13 +2,13 @@ dist: xenial
 language: python
 cache: pip
 env:
-- TEST_CMD="pytest test/ -vv --run-e2e --doctest-modules" KAFKA_URL="localhost:9092" ZOOKEEPER_URL="localhost:2181"
+- TEST_CMD="pytest test/ -vv --run-e2e --doctest-modules" BROKER_URL="localhost:9092" ZOOKEEPER_URL="localhost:2181"
 before_install:
 - wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
 - nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties  &"
 - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
-- bash -c "scripts/wait-for-it.sh ${KAFKA_URL}"
+- bash -c "scripts/wait-for-it.sh ${BROKER_URL}"
 - bash -c "scripts/wait-for-it.sh ${ZOOKEEPER_URL}"
 install:
 - pip install coverage coveralls flake8 pipenv
