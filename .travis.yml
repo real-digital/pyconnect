@@ -10,8 +10,8 @@ before_install:
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
 - nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties  &"
 - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
-- scripts/wait-for-it.sh ${KAFKA_URL}
-- scripts/wait-for-it.sh ${ZOOKEEPER_URL}
+- bash -c "scripts/wait-for-it.sh ${KAFKA_URL}"
+- bash -c "scripts/wait-for-it.sh ${ZOOKEEPER_URL}"
 install:
 - pip install coverage coveralls flake8 pipenv
 - pipenv install --system --dev --deploy
