@@ -17,13 +17,15 @@ def source_factory(topic, running_cluster_config) -> Iterable[SourceFactory]:
     """
     topic_id, _ = topic
 
-    config = SourceConfig(dict(
-        bootstrap_servers=running_cluster_config['broker'],
-        schema_registry=running_cluster_config['schema-registry'],
-        offset_topic=f'{topic_id}_offsets',
-        offset_commit_interval=5,
-        topic=topic_id
-    ))
+    config = SourceConfig(
+        dict(
+            bootstrap_servers=running_cluster_config["broker"],
+            schema_registry=running_cluster_config["schema-registry"],
+            offset_topic=f"{topic_id}_offsets",
+            offset_commit_interval=5,
+            topic=topic_id,
+        )
+    )
 
     def source_factory_() -> PyConnectTestSource:
         source = PyConnectTestSource(config)

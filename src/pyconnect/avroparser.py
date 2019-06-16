@@ -9,14 +9,7 @@ from confluent_kafka import avro as confluent_avro
 
 RecordDict = Dict[str, Any]
 
-SIMPLE_TYPE_MAP = {
-    int: "long",
-    float: "double",
-    str: "string",
-    bytes: "bytes",
-    bytearray: "bytes",
-    type(None): "null"
-}
+SIMPLE_TYPE_MAP = {int: "long", float: "double", str: "string", bytes: "bytes", bytearray: "bytes", type(None): "null"}
 
 
 def _parse_avro_field(name: str, element: Any, optional_primitives: bool) -> RecordDict:
@@ -37,13 +30,10 @@ def _parse_avro_field(name: str, element: Any, optional_primitives: bool) -> Rec
     if primitive_avro_type is not None:
 
         # Need to substitute "<type>" for ["null", "<type>"] when optional primitives are requested
-        if optional_primitives is True and primitive_avro_type is not "null":
+        if optional_primitives is True and primitive_avro_type != "null":
             primitive_avro_type = ["null", primitive_avro_type]
 
-        return {
-            "name": name,
-            "type": primitive_avro_type
-        }
+        return {"name": name, "type": primitive_avro_type}
 
     if elem_type is list:
         # TODO FIXME: must be able to deal with records in lists as well!
@@ -53,14 +43,7 @@ def _parse_avro_field(name: str, element: Any, optional_primitives: bool) -> Rec
     # TODO maybe enforce this by to-json-from-json'ing all records first?
 
     # recursive records need a little different format - note that the "name" is duplicated in parent & child element
-    return {
-        "name": name,
-        "type": {
-            "name": name,
-            "type": "record",
-            **to_avro_fields(element, optional_primitives)
-        }
-    }
+    return {"name": name, "type": {"name": name, "type": "record", **to_avro_fields(element, optional_primitives)}}
 
 
 def to_avro_fields(record: RecordDict, optional_primitives: bool) -> RecordDict:
@@ -73,13 +56,12 @@ def to_avro_fields(record: RecordDict, optional_primitives: bool) -> RecordDict:
     data = []
     for key, value in record.items():
         data.append(_parse_avro_field(key, value, optional_primitives))
-    return {
-        "fields": data
-    }
+    return {"fields": data}
 
 
-def create_schema_from_record(name: str, record: Any, namespace: str = None,
-                              optional_primitives: bool = False) -> RecordDict:
+def create_schema_from_record(
+    name: str, record: Any, namespace: str = None, optional_primitives: bool = False
+) -> RecordDict:
     """
     Infers the avro schema from a record which may be a simple primitive type or a structure.
     :param name: The root name for this schema.
@@ -93,11 +75,7 @@ def create_schema_from_record(name: str, record: Any, namespace: str = None,
 
     if isinstance(record, dict):
         # for top-level elements, the name might be either "key" or "value"
-        template = {
-            "name": name,
-            "type": "record",
-            **to_avro_fields(record, optional_primitives)
-        }
+        template = {"name": name, "type": "record", **to_avro_fields(record, optional_primitives)}
     else:
         template = _parse_avro_field(name, record, optional_primitives)
 
@@ -116,8 +94,7 @@ def to_key_schema(record: Any):
     :param record: The key record to infer the schema from.
     :return: Key schema.
     """
-    return confluent_avro.loads(json.dumps(
-        create_schema_from_record('key', record)))
+    return confluent_avro.loads(json.dumps(create_schema_from_record("key", record)))
 
 
 def to_value_schema(record: Any):
@@ -128,5 +105,4 @@ def to_value_schema(record: Any):
     :param record: The value record to infer the schema from.
     :return: Value schema.
     """
-    return confluent_avro.loads(json.dumps(
-        create_schema_from_record('value', record)))
+    return confluent_avro.loads(json.dumps(create_schema_from_record("value", record)))

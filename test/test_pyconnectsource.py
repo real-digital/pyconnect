@@ -15,16 +15,17 @@ def source_factory(message_factory):
     """
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSource`.
     """
-    config = SourceConfig(dict(
-        bootstrap_servers='testserver',
-        offset_topic='testtopic',
-        schema_registry='testregistry',
-        offset_commit_interval=5,
-        topic='testtopic'
-    ))
+    config = SourceConfig(
+        dict(
+            bootstrap_servers="testserver",
+            offset_topic="testtopic",
+            schema_registry="testregistry",
+            offset_commit_interval=5,
+            topic="testtopic",
+        )
+    )
 
-    with mock.patch('pyconnect.pyconnectsource.AvroProducer'), \
-            mock.patch('pyconnect.pyconnectsource.AvroConsumer'):
+    with mock.patch("pyconnect.pyconnectsource.AvroProducer"), mock.patch("pyconnect.pyconnectsource.AvroConsumer"):
 
         def source_factory_():
             source = PyConnectTestSource(config).with_committed_offset(0)
@@ -36,7 +37,7 @@ def source_factory(message_factory):
 
 def test_on_eof_called(source_factory: SourceFactory):
     # standard setup: no records, will call eof immediately which in turn stops producer
-    source = source_factory().with_wrapper_for('on_eof')
+    source = source_factory().with_wrapper_for("on_eof")
 
     source.run()
 
@@ -45,7 +46,7 @@ def test_on_eof_called(source_factory: SourceFactory):
 
 def test_message_sent(source_factory: SourceFactory):
     records = [(1, 1), (2, 2), (3, 3)]
-    source = source_factory().with_records(records).with_wrapper_for('_produce')
+    source = source_factory().with_records(records).with_wrapper_for("_produce")
 
     source.run()
     calls = [mock.call(key, value) for key, value in records]
@@ -53,7 +54,7 @@ def test_message_sent(source_factory: SourceFactory):
 
 
 def test_seek_is_called(source_factory: SourceFactory):
-    source = source_factory().with_wrapper_for('seek')
+    source = source_factory().with_wrapper_for("seek")
 
     source.run()
 
@@ -61,7 +62,7 @@ def test_seek_is_called(source_factory: SourceFactory):
 
 
 def test_seek_not_called_when_no_committed_offset(source_factory: SourceFactory):
-    source = source_factory().with_committed_offset(None).with_wrapper_for('seek')
+    source = source_factory().with_committed_offset(None).with_wrapper_for("seek")
 
     source.run()
 
@@ -69,7 +70,7 @@ def test_seek_not_called_when_no_committed_offset(source_factory: SourceFactory)
 
 
 def test_no_run_if_seek_fails(source_factory: SourceFactory, failing_callback: mock.Mock):
-    source = source_factory().with_wrapper_for('_run_once')
+    source = source_factory().with_wrapper_for("_run_once")
     source.seek = failing_callback
 
     try:
@@ -79,7 +80,7 @@ def test_no_run_if_seek_fails(source_factory: SourceFactory, failing_callback: m
     except NoCrashInfo:
         pass
     else:
-        pytest.fail('No Exception raised!')
+        pytest.fail("No Exception raised!")
 
     assert not cast(mock.Mock, source._run_once).called
     assert source.seek.called
@@ -87,7 +88,7 @@ def test_no_run_if_seek_fails(source_factory: SourceFactory, failing_callback: m
 
 def test_committed_offset_is_used(source_factory: SourceFactory):
     records = [(0, 0), (1, 1), (2, 2), (3, 3)]
-    source = source_factory().with_records(records).with_committed_offset(2).with_mock_for('_produce')
+    source = source_factory().with_records(records).with_committed_offset(2).with_mock_for("_produce")
 
     source.run()
 
@@ -103,6 +104,6 @@ def test_exception_raised_on_shutdown(source_factory: SourceFactory):
 
 
 def test_commit_is_called(source_factory: SourceFactory):
-    source = source_factory().with_mock_for('_commit')
+    source = source_factory().with_mock_for("_commit")
     source.run()
     assert cast(mock.Mock, source._commit).called

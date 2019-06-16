@@ -18,7 +18,7 @@ from .core import PyConnectException
 
 logger = logging.getLogger(__name__)
 
-SanityChecker = Callable[['BaseConfig'], None]
+SanityChecker = Callable[["BaseConfig"], None]
 SanityCheck = Union[str, SanityChecker]
 
 
@@ -26,6 +26,7 @@ class ConfigException(PyConnectException):
     """
     Base exception for all exceptions raised by a configuration class.
     """
+
     pass
 
 
@@ -33,6 +34,7 @@ class SanityError(ConfigException):
     """
     This exception is raised whenever a config parameter sanity check fails.
     """
+
     pass
 
 
@@ -53,20 +55,17 @@ def timedelta_parser(field: str) -> dt.timedelta:
     """
 
     unit_map = {
-        'ms': 'milliseconds',
-        'us': 'microseconds',
-        'm': 'minutes',
-        's': 'seconds',
-        'h': 'hours',
-        'd': 'days',
-        'w': 'weeks'
+        "ms": "milliseconds",
+        "us": "microseconds",
+        "m": "minutes",
+        "s": "seconds",
+        "h": "hours",
+        "d": "days",
+        "w": "weeks",
     }
 
-    matches = re.findall(r'(\d+)(us|ms|s|m|h|d|w)', field)
-    return dt.timedelta(**{
-        unit_map[unit_key]: int(unit_value)
-        for unit_value, unit_key in matches
-    })
+    matches = re.findall(r"(\d+)(us|ms|s|m|h|d|w)", field)
+    return dt.timedelta(**{unit_map[unit_key]: int(unit_value) for unit_value, unit_key in matches})
 
 
 def check_field_is_valid_url(field: str) -> SanityChecker:
@@ -89,14 +88,16 @@ def check_field_is_valid_url(field: str) -> SanityChecker:
     """
 
     pattern = re.compile(
-        r'^(?:(?:http|ftp)s?://)?'                       # protocol
-        r'(?:\w+?:.+?@)?'                                  # user:password
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+'  # domain...
-        r'(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'             # ...
-        r'[A-Z0-9\-]+|'                                    # host...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'             # ...or ip
-        r'(?::\d+)?'                                       # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)                # path or params
+        r"^(?:(?:http|ftp)s?://)?"  # protocol
+        r"(?:\w+?:.+?@)?"  # user:password
+        r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+"  # domain...
+        r"(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|"  # ...
+        r"[A-Z0-9\-]+|"  # host...
+        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
+        r"(?::\d+)?"  # optional port
+        r"(?:/?|[/?]\S+)$",
+        re.IGNORECASE,
+    )  # path or params
     return check_field_matches_pattern(field, pattern)
 
 
@@ -124,21 +125,21 @@ def check_field_matches_pattern(field: str, pattern: Union[str, Pattern]) -> San
 
     def regex_checker(field_values):
         value = field_values[field]
-        logger.debug('Validating field %r with Pattern %s', field, pattern)
+        logger.debug("Validating field %r with Pattern %s", field, pattern)
 
         if not isinstance(value, (tuple, list)):
             value = [value]
 
         for str_ in value:
-            logger.debug('Validating string %r.', str_)
+            logger.debug("Validating string %r.", str_)
             if pattern.match(str_) is None:
-                logger.debug('Validation failed')
-                raise SanityError(f'String {str_!r} does not match {pattern}')
+                logger.debug("Validation failed")
+                raise SanityError(f"String {str_!r} does not match {pattern}")
 
         if len(value) > 1:
-            logger.debug('String is valid!')
+            logger.debug("String is valid!")
         else:
-            logger.debug('Strings are valid!')
+            logger.debug("Strings are valid!")
 
     return regex_checker
 
@@ -162,21 +163,26 @@ def _checkstr_to_checker(sanity_check: str) -> SanityChecker:
 
     :param sanity_check: String defining sanity check.
     """
+
     def checker(all_fields: BaseConfig) -> None:
-        logger.debug(f'Validting fields using {sanity_check!r}')
-        checker_expression = sanity_check.format(**{
-            key: repr(value.total_seconds()) if isinstance(value, dt.timedelta) else repr(value)
-            for key, value in all_fields.items()})
-        logger.debug(f'Formatted expression is {checker_expression!r}')
+        logger.debug(f"Validting fields using {sanity_check!r}")
+        checker_expression = sanity_check.format(
+            **{
+                key: repr(value.total_seconds()) if isinstance(value, dt.timedelta) else repr(value)
+                for key, value in all_fields.items()
+            }
+        )
+        logger.debug(f"Formatted expression is {checker_expression!r}")
 
         tree = ast.parse(checker_expression)
         _validate_ast_tree(tree)
 
         success = eval(checker_expression)
         if not success:
-            raise SanityError(f'Sanity check {sanity_check!r} failed! '
-                              f'Formatted expression: {checker_expression!r}')
-        logger.debug('Check successful')
+            raise SanityError(
+                f"Sanity check {sanity_check!r} failed! " f"Formatted expression: {checker_expression!r}"
+            )
+        logger.debug("Check successful")
 
     return checker
 
@@ -190,21 +196,35 @@ def _validate_ast_tree(tree: ast.AST) -> None:
 
     :param tree: The tree to check for invalid nodes.
     """
-    valid_nodes = (ast.cmpop, ast.Module, ast.Expr, ast.Compare, ast.Num,
-                   ast.Str, ast.expr, ast.boolop, ast.NameConstant, ast.Call,
-                   ast.Name, ast.Load, ast.List, ast.Tuple, ast.unaryop)
+    valid_nodes = (
+        ast.cmpop,
+        ast.Module,
+        ast.Expr,
+        ast.Compare,
+        ast.Num,
+        ast.Str,
+        ast.expr,
+        ast.boolop,
+        ast.NameConstant,
+        ast.Call,
+        ast.Name,
+        ast.Load,
+        ast.List,
+        ast.Tuple,
+        ast.unaryop,
+    )
 
-    valid_names = ('len')
+    valid_names = "len"
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and node.id not in valid_names:
-            raise ValueError(f'Illegal node found: {node}')
+            raise ValueError(f"Illegal node found: {node}")
 
         if not isinstance(node, valid_nodes):
-            raise ValueError(f'Illegal node found: {node}')
+            raise ValueError(f"Illegal node found: {node}")
 
 
-def csv_line_reader(separator=',', quoter='"', escaper='\\', strip_chars='\r\t\n ') -> Callable[[str], List[str]]:
+def csv_line_reader(separator=",", quoter='"', escaper="\\", strip_chars="\r\t\n ") -> Callable[[str], List[str]]:
     """
     Creates a function that parses a **line** in csv format using the given parameters and returns a list of strings.
 
@@ -214,7 +234,7 @@ def csv_line_reader(separator=',', quoter='"', escaper='\\', strip_chars='\r\t\n
 
     >>> from pyconnect.config import csv_line_reader
     >>> reader = csv_line_reader()
-    >>> line = r'"quoted,field",escaped\,field, stripped field ," quoted \\" escaped field"'
+    >>> line = r'"quoted,field",escaped,field, stripped field ," quoted \\" escaped field"'
     >>> reader(line)
     ['quoted,field', 'escaped,field', 'stripped field', 'quoted " escaped field']
 
@@ -232,7 +252,7 @@ def csv_line_reader(separator=',', quoter='"', escaper='\\', strip_chars='\r\t\n
         escaping = False
 
         if len(charlist) > 0:
-            fields.append('')
+            fields.append("")
 
         while len(charlist) > 0:
             char = charlist.pop(0)
@@ -244,7 +264,7 @@ def csv_line_reader(separator=',', quoter='"', escaper='\\', strip_chars='\r\t\n
             elif char == quoter:
                 quoting = not quoting
             elif char == separator and not quoting:
-                fields.append('')
+                fields.append("")
             else:
                 fields[-1] += char
         return [field.strip(strip_chars) for field in fields]
@@ -298,26 +318,26 @@ class BaseConfig(dict):
     """
 
     __sanity_checks = [
-        '{offset_commit_interval}>0',
-        check_field_is_valid_url('schema_registry'),
-        check_field_is_valid_url('bootstrap_servers'),
+        "{offset_commit_interval}>0",
+        check_field_is_valid_url("schema_registry"),
+        check_field_is_valid_url("bootstrap_servers"),
     ]
 
     __parsers = {
-        'bootstrap_servers': csv_line_reader(),
-        'offset_commit_interval': timedelta_parser,
-        'kafka_opts': json.loads
+        "bootstrap_servers": csv_line_reader(),
+        "offset_commit_interval": timedelta_parser,
+        "kafka_opts": json.loads,
     }
 
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
         super().__init__()
-        self['bootstrap_servers'] = conf_dict.pop('bootstrap_servers')
-        self['schema_registry'] = conf_dict.pop('schema_registry')
-        self['offset_commit_interval'] = conf_dict.pop('offset_commit_interval', '30m')
-        self['kafka_opts'] = conf_dict.pop('kafka_opts', {})
+        self["bootstrap_servers"] = conf_dict.pop("bootstrap_servers")
+        self["schema_registry"] = conf_dict.pop("schema_registry")
+        self["offset_commit_interval"] = conf_dict.pop("offset_commit_interval", "30m")
+        self["kafka_opts"] = conf_dict.pop("kafka_opts", {})
 
         if len(conf_dict) != 0:
-            raise TypeError(f'The following options are unused: {conf_dict!r}')
+            raise TypeError(f"The following options are unused: {conf_dict!r}")
 
         self._apply_parsers()
         self._perform_sanity_checks()
@@ -342,16 +362,16 @@ class BaseConfig(dict):
         parsers: Dict[str, Callable] = {}
 
         for cls in self._find_subclasses():
-            attr_name = f'_{cls.__name__}__parsers'
+            attr_name = f"_{cls.__name__}__parsers"
             if hasattr(self, attr_name):
                 parsers.update(getattr(self, attr_name))
         return parsers
 
-    def _find_subclasses(self) -> List[Type['BaseConfig']]:
+    def _find_subclasses(self) -> List[Type["BaseConfig"]]:
         """
         Find all classes that are parents of `type(self)` and subclasses of :class:`pyconnect.config.BaseConfig`.
         """
-        subclasses: List[Type['BaseConfig']] = []
+        subclasses: List[Type["BaseConfig"]] = []
         for cls in inspect.getmro(type(self)):
             if issubclass(cls, BaseConfig):
                 subclasses.append(cls)
@@ -362,9 +382,9 @@ class BaseConfig(dict):
         Perform all sanity checks that are defined on this object.
         Will go through all the base classes and inspect their `__sanity_checks` attribute.
         """
-        logger.debug(f'Performing sanity checks on {self}')
+        logger.debug(f"Performing sanity checks on {self}")
         all_checks = self._find_sanity_checks()
-        logger.debug(f'Found {len(all_checks)} sanity checks!')
+        logger.debug(f"Found {len(all_checks)} sanity checks!")
 
         for check in all_checks:
             if isinstance(check, str):
@@ -372,7 +392,7 @@ class BaseConfig(dict):
             else:
                 checker = check
             checker(self)
-        logger.info('Config checks out sane!')
+        logger.info("Config checks out sane!")
 
     def _find_sanity_checks(self) -> List[SanityCheck]:
         """
@@ -381,31 +401,31 @@ class BaseConfig(dict):
         checks: List[SanityCheck] = []
 
         for cls in self._find_subclasses():
-            attr_name = f'_{cls.__name__}__sanity_checks'
+            attr_name = f"_{cls.__name__}__sanity_checks"
             if hasattr(self, attr_name):
                 checks.extend(getattr(self, attr_name))
         return checks
 
     @classmethod
-    def from_yaml_file(cls: Type['BaseConfig'], yaml_file: Union[str, Path]) -> 'BaseConfig':
+    def from_yaml_file(cls: Type["BaseConfig"], yaml_file: Union[str, Path]) -> "BaseConfig":
         """
         Loads a yaml file and uses it to create the config
         """
-        with open(yaml_file, 'r') as infile:
+        with open(yaml_file, "r") as infile:
             conf = yaml.load(infile)
         return cls(conf)
 
     @classmethod
-    def from_json_file(cls: Type['BaseConfig'], json_file: Union[str, Path]) -> 'BaseConfig':
+    def from_json_file(cls: Type["BaseConfig"], json_file: Union[str, Path]) -> "BaseConfig":
         """
         Loads a json file and uses it to create the config
         """
-        with open(json_file, 'r') as infile:
+        with open(json_file, "r") as infile:
             conf = json.load(infile)
         return cls(conf)
 
     @classmethod
-    def from_json_string(cls: Type['BaseConfig'], json_string: str) -> 'BaseConfig':
+    def from_json_string(cls: Type["BaseConfig"], json_string: str) -> "BaseConfig":
         """
         Takes a json string, parses it and then creates the config from it
         """
@@ -413,7 +433,7 @@ class BaseConfig(dict):
         return cls(conf)
 
     @classmethod
-    def from_env_variables(cls: Type['BaseConfig']) -> 'BaseConfig':
+    def from_env_variables(cls: Type["BaseConfig"]) -> "BaseConfig":
         """
         Takes all environment variables, turns their keys to lowercase and checks if they start with `'pyconnect_'`.
         If so, it strips the prefix and adds them to a dictionary which is then used to create the config object.
@@ -422,16 +442,12 @@ class BaseConfig(dict):
         would be transformed to the dictionary `{'bootstrap_servers': 'myserver1,myserver2'}` which would then be used
         to create the config object.
         """
-        prefix = 'pyconnect_'
+        prefix = "pyconnect_"
 
         def strip_prefix(env_var_name: str) -> str:
-            return env_var_name[len(prefix):]
+            return env_var_name[len(prefix) :]
 
-        conf = {
-            strip_prefix(key).lower(): value
-            for key, value in os.environ.items()
-            if prefix in key.lower()
-        }
+        conf = {strip_prefix(key).lower(): value for key, value in os.environ.items() if prefix in key.lower()}
 
         return cls(conf)
 
@@ -452,18 +468,13 @@ class SinkConfig(BaseConfig):
             *Default is 2*
     """
 
-    __parsers = {
-        'poll_timeout': (lambda x: float(x) if float(x) != -1 else None),
-        'topics': csv_line_reader()
-    }
-    __sanity_checks = [
-        '{poll_timeout}==-1 or {poll_timeout}>0'
-    ]
+    __parsers = {"poll_timeout": (lambda x: float(x) if float(x) != -1 else None), "topics": csv_line_reader()}
+    __sanity_checks = ["{poll_timeout}==-1 or {poll_timeout}>0"]
 
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
-        self['group_id'] = conf_dict.pop('group_id')
-        self['topics'] = conf_dict.pop('topics')
-        self['poll_timeout'] = conf_dict.pop('poll_timeout', 2)
+        self["group_id"] = conf_dict.pop("group_id")
+        self["topics"] = conf_dict.pop("topics")
+        self["poll_timeout"] = conf_dict.pop("poll_timeout", 2)
 
         super().__init__(conf_dict)
 
@@ -480,7 +491,7 @@ class SourceConfig(BaseConfig):
     """
 
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
-        self['topic'] = conf_dict.pop('topic')
-        self['offset_topic'] = conf_dict.pop('offset_topic')
+        self["topic"] = conf_dict.pop("topic")
+        self["offset_topic"] = conf_dict.pop("offset_topic")
 
         super().__init__(conf_dict)

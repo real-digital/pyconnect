@@ -21,8 +21,8 @@ def message_repr(msg: Message) -> str:
     :return: String representation of the message.
     """
     return (
-        f'Message(key={msg.key()!r}, value={msg.value()!r}, topic={msg.topic()!r}, '
-        f'partition={msg.partition()!r}, offset={msg.offset()!r}, error={msg.error()!r})'
+        f"Message(key={msg.key()!r}, value={msg.value()!r}, topic={msg.topic()!r}, "
+        f"partition={msg.partition()!r}, offset={msg.offset()!r}, error={msg.error()!r})"
     )
 
 
@@ -30,6 +30,7 @@ class PyConnectException(Exception):
     """
     Base Class for all exceptions raised by the PyConnect framework.
     """
+
     pass
 
 
@@ -37,6 +38,7 @@ class NoCrashInfo(PyConnectException):
     """
     Exception that says that a callback returned `Status.CRASHED` without supplying any exception for status_info.
     """
+
     pass
 
 
@@ -60,6 +62,7 @@ class Status(Enum):
     |                | :attr:`pyconnect.core.BaseConnector.status_info` variable.          |
     +----------------+---------------------------------------------------------------------+
     """
+
     NOT_YET_RUNNING = 0
     RUNNING = 1
     STOPPED = 2
@@ -111,8 +114,9 @@ class BaseConnector(metaclass=ABCMeta):
         :meth:`pyconnect.core.BaseConnector.on_startup` so implementing classes can do so as well.
         """
         if not self._status == Status.NOT_YET_RUNNING:
-            raise PyConnectException('Can not re-start a failed/stopped connector, '
-                                     'need to re-create a Connect instance')
+            raise PyConnectException(
+                "Can not re-start a failed/stopped connector, " "need to re-create a Connect instance"
+            )
 
         self._status = Status.RUNNING
 
@@ -180,10 +184,10 @@ class BaseConnector(metaclass=ABCMeta):
             self._status = new_status
             if new_status == Status.CRASHED:
                 if self._status_info is None:
-                    self._status_info = NoCrashInfo(f'Callback {callback} returned Status CRASHED')
+                    self._status_info = NoCrashInfo(f"Callback {callback} returned Status CRASHED")
                 raise self._status_info
         else:
-            raise RuntimeError(f'Callback {callback} needs to return Status or None but returned {type(new_status)}')
+            raise RuntimeError(f"Callback {callback} needs to return Status or None but returned {type(new_status)}")
 
     def _handle_exception(self, e: Exception) -> None:
         """
@@ -196,7 +200,7 @@ class BaseConnector(metaclass=ABCMeta):
         if isinstance(e, KafkaException):
             self._handle_kafka_exception(e)
         else:
-            logger.exception('Connector crashed!')
+            logger.exception("Connector crashed!")
             self._status = Status.CRASHED
             self._status_info = e
 
@@ -206,7 +210,7 @@ class BaseConnector(metaclass=ABCMeta):
 
         :param e: The exception that was raised.
         """
-        logger.exception('Kafka internal exception!')
+        logger.exception("Kafka internal exception!")
         self._status = Status.CRASHED
         self._status_info = e
 
@@ -267,4 +271,4 @@ class BaseConnector(metaclass=ABCMeta):
 
     def _on_shutdown(self) -> None:
         self._safe_call_and_set_status(self.on_shutdown)
-        assert self._status in (Status.STOPPED, Status.CRASHED), f'Illegal State: {self._status.name} after shutdown!'
+        assert self._status in (Status.STOPPED, Status.CRASHED), f"Illegal State: {self._status.name} after shutdown!"

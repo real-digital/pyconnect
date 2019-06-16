@@ -1,5 +1,7 @@
 # PyConnect
 
+[![pypi Version](https://img.shields.io/pypi/v/pyconnect.svg)](https://pypi.org/project/pyconnect/) [![Python Versions](https://img.shields.io/pypi/pyversions/pyconnect.svg)](https://pypi.org/project/pyconnect/) [![Build Status](https://travis-ci.org/real-digital/pyconnect.svg?branch=master)](https://travis-ci.org/real-digital/pyconnect) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A Python implementation of "Kafka Connect"-like functionality that uses plain AvroConsumer/-Producers to make it easier to develop Kafka connect applications.
 
 ## TODOs
