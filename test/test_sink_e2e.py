@@ -2,6 +2,7 @@ import threading
 from typing import Callable
 
 import pytest
+from unittest import mock
 
 from pyconnect.config import SinkConfig
 from pyconnect.core import Status
@@ -47,6 +48,21 @@ def test_message_consumption(produced_messages, connect_sink_factory: ConnectSin
     connect_sink.run()
 
     compare_lists_unordered(produced_messages, connect_sink.flushed_messages)
+
+
+@pytest.mark.e2e
+def test_offset_commit_on_restart(produced_messages, connect_sink_factory: ConnectSinkFactory):
+    connect_sink = connect_sink_factory()
+
+    connect_sink.run()
+
+    compare_lists_unordered(produced_messages, connect_sink.flushed_messages)
+
+    connect_sink = connect_sink_factory()
+    connect_sink.max_idle_count = 10
+    with mock.patch.object(connect_sink._consumer, "commit") as consumer:
+        connect_sink.run()
+        assert consumer.commit.called_with(offsets=15)
 
 
 @pytest.mark.e2e
