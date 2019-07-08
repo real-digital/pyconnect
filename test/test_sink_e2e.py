@@ -25,7 +25,7 @@ def connect_sink_factory(running_cluster_config, topic) -> ConnectSinkFactory:
             "schema_registry": running_cluster_config["schema-registry"],
             "offset_commit_interval": 1,
             "group_id": group_id,
-            "poll_timeout": 10,
+            "poll_timeout": 2,
             "topics": topic_id,
         }
     )
@@ -36,7 +36,9 @@ def connect_sink_factory(running_cluster_config, topic) -> ConnectSinkFactory:
             config.update(custom_config)
         else:
             config = sink_config
-        return PyConnectTestSink(config)
+        test_sink = PyConnectTestSink(config)
+        test_sink.max_runs = 30
+        return test_sink
 
     return connect_sink_factory_
 
