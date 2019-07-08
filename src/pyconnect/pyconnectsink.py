@@ -147,9 +147,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "group.id": self.config["group_id"],
             "schema.registry.url": self.config["schema_registry"],
-            # We need to commit offsets manually once we"re sure it got saved
+            # We need to commit offsets manually once we're sure it got saved
             # to the sink
             "enable.auto.commit": False,
+            # We want to keep track of EOFs
+            "enable.partition.eof": True,
             # We need this to start at the last committed offset instead of the
             # latest when subscribing for the first time
             "default.topic.config": {"auto.offset.reset": "earliest"},
