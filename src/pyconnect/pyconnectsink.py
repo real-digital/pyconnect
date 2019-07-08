@@ -28,11 +28,14 @@ class MessageType(Enum):
     +------------+--------------------------------------------------------------------------+
     | ERROR      | The message contains some event or error data, check its `error` method. |
     +------------+--------------------------------------------------------------------------+
+    | EOF        | The message indicates the end of a partition.                            |
+    +------------+--------------------------------------------------------------------------+
     """
 
     STANDARD = 0
     NO_MESSAGE = 1
     ERROR = 2
+    EOF = 3
 
 
 def determine_message_type(msg: Optional[Message]) -> MessageType:
@@ -47,7 +50,7 @@ def determine_message_type(msg: Optional[Message]) -> MessageType:
         return MessageType.NO_MESSAGE
     if msg.error() is not None:
         if msg.error().code() == KafkaError._PARTITION_EOF:
-            return MessageType.NO_MESSAGE
+            return MessageType.EOF
         else:
             return MessageType.ERROR
     return MessageType.STANDARD
@@ -242,6 +245,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             self._on_no_message_received()
         elif msg_type == MessageType.ERROR:
             self._on_error_received(msg)
+        elif msg_type == MessageType.EOF:
+            self._on_eof_received(msg)
 
     def _on_message_received(self, msg: Message):
         self.__eof_reached[(msg.topic(), msg.partition())] = False
@@ -271,16 +276,32 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         raise NotImplementedError("Need to implement and call this on a subclass")
 
     def _on_no_message_received(self):
-        if self.current_message is not None:
-            # last_message at this point only present if error code was _PARTITION_EOF
-            assert self.current_message.error().code() == KafkaError._PARTITION_EOF, "Message is not EOF!"
-            key = (self.current_message.topic(), self.current_message.partition())
-            self.__eof_reached[key] = True
         self._unsafe_call_and_set_status(self.on_no_message_received)
+
+    def _on_eof_received(self, msg: Message):
+        key = (msg.topic(), msg.partition())
+        self.__eof_reached[key] = True
+
+        # when the sink has been restarted but is already at the end of the topic, this is how we
+        # get the current offset. We need to keep committing this so the offsets in kafka won't get deleted.
+        topic_partition = msg_to_topic_partition(msg)
+        key = (topic_partition.topic, topic_partition.partition)
+        logger.debug(f"Updating offset: {topic_partition}")
+        self.__offsets[key] = topic_partition
+
+        self._unsafe_call_and_set_status(self.on_eof_received, msg)
+
+    def on_eof_received(self, msg: Message):
+        """
+        This callback is called whenever the sink's consumer has hit the end of a partition.
+
+        :return: A status which will overwrite the current one or `None` if status shall stay untouched.
+        """
+        pass
 
     def on_no_message_received(self):
         """
-        This callback is called whenever the sink's consumer has not received a message or hit EOF on a partition.
+        This callback is called whenever the sink's consumer has not received a message.
 
         :return: A status which will overwrite the current one or `None` if status shall stay untouched.
         """
