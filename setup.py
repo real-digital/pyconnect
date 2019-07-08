@@ -1,6 +1,6 @@
 from setuptools import setup
 
-required = ["confluent-kafka[avro]>=0.11.5,<1.0.0", "pyaml>=3.13"]
+required = ["confluent-kafka[avro]>=1.0", "pyaml>=3.13"]
 
 
 setup(
