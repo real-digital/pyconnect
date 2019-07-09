@@ -47,7 +47,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "schema.registry.url": self.config["schema_registry"],
             "enable.auto.commit": False,
-            "offset.store.method": "none",
+            "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
         }
@@ -71,7 +71,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         partition.offset = high_offset - 1
         self._offset_consumer.seek(partition)
 
-        offset_msg = self._offset_consumer.poll(timeout=30)
+        offset_msg = self._offset_consumer.poll(timeout=60)
         if offset_msg is None:
             raise PyConnectException("Offset could not be fetched")
         if offset_msg.error() is None:
