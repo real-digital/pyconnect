@@ -1,8 +1,8 @@
 import threading
 from typing import Callable
+from unittest import mock
 
 import pytest
-from unittest import mock
 
 from pyconnect.config import SinkConfig
 from pyconnect.core import Status
@@ -85,6 +85,7 @@ def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSi
 
     with pytest.raises(TestException):
         connect_sink.run()
+    del connect_sink._consumer
     flushed_messages = connect_sink.flushed_messages
 
     connect_sink = connect_sink_factory()
