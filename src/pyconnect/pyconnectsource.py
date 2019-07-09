@@ -3,7 +3,7 @@ from time import sleep
 from typing import Any, Optional, Tuple
 
 from confluent_kafka.avro import AvroConsumer, AvroProducer
-from confluent_kafka.cimpl import KafkaError, OFFSET_END, TopicPartition
+from confluent_kafka.cimpl import KafkaError, TopicPartition
 
 from .avroparser import to_key_schema, to_value_schema
 from .config import SourceConfig
@@ -52,7 +52,6 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             "default.topic.config": {"auto.offset.reset": "latest"},
         }
         offset_consumer = AvroConsumer(config)
-        offset_consumer.assign([TopicPartition(self.config["offset_topic"], 0, OFFSET_END)])
 
         return offset_consumer
 
@@ -66,10 +65,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         """
         Fetches the last committed offsets using :attr:`pyconnect.pyconnectsource.PyConnectSource._consumer`.
         """
-        partition = self._offset_consumer.assignment()[0]
-        _, high_offset = self._offset_consumer.get_watermark_offsets(partition)
-        partition.offset = high_offset - 1
-        self._offset_consumer.seek(partition)
+        self._assign_consumer_to_last_offset()
 
         offset_msg = self._offset_consumer.poll(timeout=60)
         if offset_msg is None:
@@ -79,6 +75,12 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         if offset_msg.error().code() != KafkaError._PARTITION_EOF:
             raise PyConnectException(f"Kafka library returned error: {offset_msg.err().name()}")
         return None
+
+    def _assign_consumer_to_last_offset(self):
+        partition = TopicPartition(self.config["offset_topic"], 0)
+        _, high_offset = self._offset_consumer.get_watermark_offsets(partition)
+        partition.offset = max(0, high_offset - 1)
+        self._offset_consumer.assign([partition])
 
     def _seek(self, idx: Any) -> None:
         self._safe_call_and_set_status(self.seek, idx)
