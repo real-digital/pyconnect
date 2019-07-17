@@ -234,7 +234,7 @@ def csv_line_reader(separator=",", quoter='"', escaper="\\", strip_chars="\r\t\n
 
     >>> from pyconnect.config import csv_line_reader
     >>> reader = csv_line_reader()
-    >>> line = r'"quoted,field",escaped,field, stripped field ," quoted \\" escaped field"'
+    >>> line = r'"quoted,field",escaped\,field, stripped field ," quoted \" escaped field"'
     >>> reader(line)
     ['quoted,field', 'escaped,field', 'stripped field', 'quoted " escaped field']
 
@@ -243,7 +243,7 @@ def csv_line_reader(separator=",", quoter='"', escaper="\\", strip_chars="\r\t\n
     :param escaper: Char used to escape to following char, for example when it is a separator.
     :param strip_chars: Those chars are stripped from the beginning and end of each field.
     :return: A parser for csv lines.
-    """
+    """  # noqa: W605
 
     def line_reader(input_line: str):
         charlist = list(input_line)

@@ -1,5 +1,6 @@
 import threading
 from typing import Callable
+from unittest import mock
 
 import pytest
 
@@ -24,7 +25,7 @@ def connect_sink_factory(running_cluster_config, topic) -> ConnectSinkFactory:
             "schema_registry": running_cluster_config["schema-registry"],
             "offset_commit_interval": 1,
             "group_id": group_id,
-            "poll_timeout": 10,
+            "poll_timeout": 2,
             "topics": topic_id,
         }
     )
@@ -35,7 +36,9 @@ def connect_sink_factory(running_cluster_config, topic) -> ConnectSinkFactory:
             config.update(custom_config)
         else:
             config = sink_config
-        return PyConnectTestSink(config)
+        test_sink = PyConnectTestSink(config)
+        test_sink.max_runs = 30
+        return test_sink
 
     return connect_sink_factory_
 
@@ -50,8 +53,33 @@ def test_message_consumption(produced_messages, connect_sink_factory: ConnectSin
 
 
 @pytest.mark.e2e
-def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSinkFactory):
+def test_offset_commit_on_restart(produced_messages, connect_sink_factory: ConnectSinkFactory):
+    def patch_commit(sink: PyConnectTestSink) -> mock.Mock:
+        old_func = sink._consumer.commit
+        mocked_func = mock.Mock(name="commit", wraps=old_func)
+        sink._consumer.commit = mocked_func
+        return mocked_func
+
     connect_sink = connect_sink_factory()
+    commit_mock = patch_commit(connect_sink)
+    connect_sink.run()
+
+    expected_call = commit_mock.call_args
+
+    compare_lists_unordered(produced_messages, connect_sink.flushed_messages)
+
+    connect_sink = connect_sink_factory()
+    commit_mock = patch_commit(connect_sink)
+    connect_sink.max_idle_count = 2
+    connect_sink.run()
+
+    assert len(expected_call[1]["offsets"]) > 0, f"No offsets commited during commit! {expected_call}"
+    assert expected_call == commit_mock.call_args
+
+
+@pytest.mark.e2e
+def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSinkFactory):
+    connect_sink = connect_sink_factory({"kafka_opts": {"max.poll.interval.ms": 10000, "session.timeout.ms": 6000}})
     connect_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 7)
     connect_sink.with_mock_for("close")
 

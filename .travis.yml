@@ -18,7 +18,7 @@ before_install:
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
 - pip install coverage coveralls flake8 pipenv
-- pipenv install --system --dev --deploy
+- pipenv install --system --dev
 script:
 - "$TEST_CMD"
 after_success:

@@ -43,6 +43,7 @@ def test_file_sink_example(running_cluster_config, topic, produced_messages, tmp
         env=env_vars,
         cwd=tmpdir,
         check=True,
+        timeout=300,
     )
 
     filedata = sinkfile.read_text()
@@ -76,6 +77,7 @@ def test_file_source_example(records, running_cluster_config, topic, consume_all
         env=env_vars,
         cwd=tmpdir,
         check=True,
+        timeout=300,
     )
 
     published_records = consume_all()
