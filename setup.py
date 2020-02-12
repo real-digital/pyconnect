@@ -1,6 +1,6 @@
 from setuptools import setup
 
-required = ["confluent-kafka[avro]>=1.0", "pyaml>=3.13"]
+required = ["pycodestyle", "confluent-kafka[avro]>=1.0", "pyaml>=3.13"]
 
 
 setup(
