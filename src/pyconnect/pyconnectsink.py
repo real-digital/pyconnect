@@ -10,7 +10,7 @@ from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError
 
 from .config import SinkConfig
-from .core import BaseConnector, Status, message_repr
+from .core import BaseConnector, Status, message_repr, hash_sensitive_values
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             **self.config["kafka_opts"],
         }
         consumer = RichAvroConsumer(config)
-        logger.info(f"AvroConsumer created with config: {config}")
+        hashed_config = hash_sensitive_values(config)
+        logger.info(f"AvroConsumer created with config: {hashed_config}")
         # noinspection PyArgumentList
         consumer.subscribe(self.config["topics"], on_assign=self._on_assign, on_revoke=self._on_revoke)
         return consumer

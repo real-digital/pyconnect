@@ -4,8 +4,10 @@ This module contains central dependencies for all other modules such as base exc
 
 import logging
 from abc import ABCMeta, abstractmethod
+import hashlib
 from enum import Enum
-from typing import Any, Callable, Optional
+import os
+from typing import Any, Callable, Optional, Dict
 
 from confluent_kafka import KafkaException
 from confluent_kafka.cimpl import Message
@@ -24,6 +26,34 @@ def message_repr(msg: Message) -> str:
         f"Message(key={msg.key()!r}, value={msg.value()!r}, topic={msg.topic()!r}, "
         f"partition={msg.partition()!r}, offset={msg.offset()!r}, error={msg.error()!r})"
     )
+
+
+def hash_sensitive_values(
+    config: Dict[str, Any], algorithm: str = "sha256", iterations: int = 100000, log_params: bool = True
+) -> Dict[str, Any]:
+    """
+    This function takes a kakfa configuration dictionary and hashes all present sensitive values (i.e. any keys from
+    "ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key" which are in the dictionary).
+    By default the hashing parameters are logged. If you do not want this behavior, set `log_params` to False.
+    Note: The original dictionary is not modified.
+
+    :param config: Kafka config dictionary.
+    :param algorithm: Hash algorithm.
+    :param iterations: Number of times to run the hashing algorithm.
+    :param log_params: Should the hashing parameters be logged?
+    :return: a dictionary in which the sensitive values are hashed.
+    """
+    SENSITIVE_KEYS = ["ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key"]
+
+    config_copy = config.copy()
+    salt = os.urandom(32)
+    for key in SENSITIVE_KEYS:
+        if key in config_copy:
+            if log_params:
+                logger.info(f"Hashing {key} with {iterations} {algorithm} iterations and salt {salt}.")
+            hashed_password = hashlib.pbkdf2_hmac(algorithm, config_copy[key].encode(), salt, iterations)
+            config_copy[key] = hashed_password.hex()
+    return config_copy
 
 
 class PyConnectException(Exception):
