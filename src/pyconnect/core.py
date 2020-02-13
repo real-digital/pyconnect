@@ -34,14 +34,15 @@ def hide_plaintext_sensitive_values(
     """
     This function takes a kakfa configuration dictionary and hashes all present sensitive values (i.e. any keys from
     "ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key" which are in the dictionary).
-    By default the hashing parameters are logged. If you do not want this behavior, set `log_params` to False.
+    By default the hashed value is logged with the hashing parameters. If you do not want this behavior and would rather
+    the sensitive_value be replaced by "****", set `hash_passwords` to False.
     Note: The original dictionary is not modified.
 
     :param config: Kafka config dictionary.
     :param algorithm: Hash algorithm.
     :param iterations: Number of times to run the hashing algorithm.
     :param hash_passwords: Should the hashing parameters be logged?  Set to `False` if you don't need to be able to
-        check the secret value, this replaces the sensitive value with "****".
+        check the secret value; this replaces the sensitive value with "****".
     :return: a dictionary in which the sensitive values are hashed.
     """
     SENSITIVE_KEYS = ["ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key"]
