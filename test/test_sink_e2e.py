@@ -1,5 +1,5 @@
 import threading
-from typing import Callable
+from typing import Callable, Tuple, Dict
 from unittest import mock
 
 import pytest
@@ -12,12 +12,14 @@ ConnectSinkFactory = Callable[..., PyConnectTestSink]
 
 
 @pytest.fixture
-def connect_sink_factory(running_cluster_config, topic) -> ConnectSinkFactory:
+def connect_sink_factory(
+    running_cluster_config: Dict[str, str], topic_and_partitions: Tuple[str, int]
+) -> ConnectSinkFactory:
     """
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSink`.
     If necessary, any config parameter can be overwritten by providing a custom config as argument to the factory.
     """
-    topic_id, partitions = topic
+    topic_id, partitions = topic_and_partitions
     group_id = topic_id + "_sink_group_id"
     sink_config = SinkConfig(
         {
@@ -97,8 +99,8 @@ def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSi
 
 
 @pytest.mark.e2e
-def test_two_sinks_one_failing(topic, produced_messages, connect_sink_factory):
-    _, partitions = topic
+def test_two_sinks_one_failing(topic_and_partitions: Tuple[str, int], produced_messages, connect_sink_factory):
+    _, partitions = topic_and_partitions
     if partitions == 1:
         return  # we need to test multiple consumers on multiple partitions for rebalancing issues
     conf = {"offset_commit_interval": 2}

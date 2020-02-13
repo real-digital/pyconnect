@@ -2,6 +2,7 @@ import json
 import pathlib
 import shutil
 import subprocess
+from typing import Tuple
 
 import pytest
 
@@ -11,7 +12,7 @@ EXAMPLES_DIR = ROOT_DIR / "examples"
 
 
 @pytest.fixture
-def tmp_with_pyconnect(tmpdir):
+def tmp_with_pyconnect(tmpdir) -> Tuple[pathlib.Path, pathlib.Path]:
     tmpdir = pathlib.Path(tmpdir).absolute()
     venv_name = ".test_venv"
     venv_bin = tmpdir / venv_name / "bin"
@@ -23,14 +24,19 @@ def tmp_with_pyconnect(tmpdir):
 
 
 @pytest.mark.e2e
-def test_file_sink_example(running_cluster_config, topic, produced_messages, tmp_with_pyconnect):
+def test_file_sink_example(
+    running_cluster_config,
+    topic_and_partitions: Tuple[str, int],
+    produced_messages,
+    tmp_with_pyconnect: Tuple[pathlib.Path, pathlib.Path],
+):
     tmpdir, venv_bin = tmp_with_pyconnect
     sinkfile = tmpdir / "sink_dir" / "sinkfile"
 
     env_vars = {
         "PYCONNECT_BOOTSTRAP_SERVERS": running_cluster_config["broker"],
         "PYCONNECT_SCHEMA_REGISTRY": running_cluster_config["schema-registry"],
-        "PYCONNECT_TOPICS": topic[0],
+        "PYCONNECT_TOPICS": topic_and_partitions[0],
         "PYCONNECT_GROUP_ID": "testgroup",
         "PYCONNECT_SINK_DIRECTORY": sinkfile.parent,
         "PYCONNECT_SINK_FILENAME": sinkfile.name,
@@ -54,15 +60,23 @@ def test_file_sink_example(running_cluster_config, topic, produced_messages, tmp
 
 
 @pytest.mark.e2e
-def test_file_source_example(records, running_cluster_config, topic, consume_all, tmp_with_pyconnect):
+def test_file_source_example(
+    records,
+    running_cluster_config,
+    topic_and_partitions: Tuple[str, int],
+    consume_all,
+    tmp_with_pyconnect: Tuple[pathlib.Path, pathlib.Path],
+):
     tmpdir, venv_bin = tmp_with_pyconnect
     source_file = tmpdir / "source_dir" / "sourcefile"
+
+    topic_id, _ = topic_and_partitions
 
     env_vars = {
         "PYCONNECT_BOOTSTRAP_SERVERS": running_cluster_config["broker"],
         "PYCONNECT_SCHEMA_REGISTRY": running_cluster_config["schema-registry"],
-        "PYCONNECT_TOPIC": topic[0],
-        "PYCONNECT_OFFSET_TOPIC": topic[0] + "_offset_topic",
+        "PYCONNECT_TOPIC": topic_id,
+        "PYCONNECT_OFFSET_TOPIC": f"{topic_id}_offset_topic",
         "PYCONNECT_SOURCE_DIRECTORY": source_file.parent,
         "PYCONNECT_SOURCE_FILENAME": source_file.name,
     }
