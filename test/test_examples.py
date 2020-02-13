@@ -2,17 +2,18 @@ import json
 import pathlib
 import shutil
 import subprocess
-from typing import Tuple
+from typing import Tuple, List, Dict
 
 import pytest
 
+from .conftest import RecordList, ConsumeAll
 from .utils import ROOT_DIR, compare_lists_unordered
 
 EXAMPLES_DIR = ROOT_DIR / "examples"
 
 
 @pytest.fixture
-def tmp_with_pyconnect(tmpdir) -> Tuple[pathlib.Path, pathlib.Path]:
+def tmp_with_pyconnect(tmpdir: pathlib.Path) -> Tuple[pathlib.Path, pathlib.Path]:
     tmpdir = pathlib.Path(tmpdir).absolute()
     venv_name = ".test_venv"
     venv_bin = tmpdir / venv_name / "bin"
@@ -25,9 +26,9 @@ def tmp_with_pyconnect(tmpdir) -> Tuple[pathlib.Path, pathlib.Path]:
 
 @pytest.mark.e2e
 def test_file_sink_example(
-    running_cluster_config,
+    running_cluster_config: Dict[str, str],
     topic_and_partitions: Tuple[str, int],
-    produced_messages,
+    produced_messages: List[Tuple[str, dict]],
     tmp_with_pyconnect: Tuple[pathlib.Path, pathlib.Path],
 ):
     tmpdir, venv_bin = tmp_with_pyconnect
@@ -61,10 +62,10 @@ def test_file_sink_example(
 
 @pytest.mark.e2e
 def test_file_source_example(
-    records,
-    running_cluster_config,
+    records: RecordList,
+    running_cluster_config: Dict[str, str],
     topic_and_partitions: Tuple[str, int],
-    consume_all,
+    consume_all: ConsumeAll,
     tmp_with_pyconnect: Tuple[pathlib.Path, pathlib.Path],
 ):
     tmpdir, venv_bin = tmp_with_pyconnect

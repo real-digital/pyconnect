@@ -1,5 +1,5 @@
 import threading
-from typing import Callable, Tuple, Dict
+from typing import Callable, Tuple, Dict, List
 from unittest import mock
 
 import pytest
@@ -46,7 +46,7 @@ def connect_sink_factory(
 
 
 @pytest.mark.e2e
-def test_message_consumption(produced_messages, connect_sink_factory: ConnectSinkFactory):
+def test_message_consumption(produced_messages: List[Tuple[str, dict]], connect_sink_factory: ConnectSinkFactory):
     connect_sink = connect_sink_factory()
 
     connect_sink.run()
@@ -55,7 +55,7 @@ def test_message_consumption(produced_messages, connect_sink_factory: ConnectSin
 
 
 @pytest.mark.e2e
-def test_offset_commit_on_restart(produced_messages, connect_sink_factory: ConnectSinkFactory):
+def test_offset_commit_on_restart(produced_messages: List[Tuple[str, dict]], connect_sink_factory: ConnectSinkFactory):
     def patch_commit(sink: PyConnectTestSink) -> mock.Mock:
         old_func = sink._consumer.commit
         mocked_func = mock.Mock(name="commit", wraps=old_func)
@@ -80,7 +80,7 @@ def test_offset_commit_on_restart(produced_messages, connect_sink_factory: Conne
 
 
 @pytest.mark.e2e
-def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSinkFactory):
+def test_continue_after_crash(produced_messages: List[Tuple[str, dict]], connect_sink_factory: ConnectSinkFactory):
     connect_sink = connect_sink_factory({"kafka_opts": {"max.poll.interval.ms": 10000, "session.timeout.ms": 6000}})
     connect_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 7)
     connect_sink.with_mock_for("close")
@@ -99,7 +99,9 @@ def test_continue_after_crash(produced_messages, connect_sink_factory: ConnectSi
 
 
 @pytest.mark.e2e
-def test_two_sinks_one_failing(topic_and_partitions: Tuple[str, int], produced_messages, connect_sink_factory):
+def test_two_sinks_one_failing(
+    topic_and_partitions: Tuple[str, int], produced_messages: List[Tuple[str, dict]], connect_sink_factory
+):
     _, partitions = topic_and_partitions
     if partitions == 1:
         return  # we need to test multiple consumers on multiple partitions for rebalancing issues

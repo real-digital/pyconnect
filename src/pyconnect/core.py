@@ -28,8 +28,8 @@ def message_repr(msg: Message) -> str:
     )
 
 
-def hash_sensitive_values(
-    config: Dict[str, Any], algorithm: str = "sha256", iterations: int = 100000, log_params: bool = True
+def hide_plaintext_sensitive_values(
+    config: Dict[str, Any], algorithm: str = "sha256", iterations: int = 100000, hash_passwords: bool = True
 ) -> Dict[str, Any]:
     """
     This function takes a kakfa configuration dictionary and hashes all present sensitive values (i.e. any keys from
@@ -40,7 +40,8 @@ def hash_sensitive_values(
     :param config: Kafka config dictionary.
     :param algorithm: Hash algorithm.
     :param iterations: Number of times to run the hashing algorithm.
-    :param log_params: Should the hashing parameters be logged?
+    :param hash_passwords: Should the hashing parameters be logged?  Set to `False` if you don't need to be able to
+        check the secret value, this replaces the sensitive value with "****".
     :return: a dictionary in which the sensitive values are hashed.
     """
     SENSITIVE_KEYS = ["ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key"]
@@ -49,11 +50,11 @@ def hash_sensitive_values(
     salt = os.urandom(32)
     for key in SENSITIVE_KEYS:
         if key in config_copy:
-            if log_params:
+            if hash_passwords:
                 hashed_password = hashlib.pbkdf2_hmac(algorithm, config_copy[key].encode(), salt, iterations).hex()
                 config_copy[key] = f"$PBKDF2-HMAC-{algorithm.upper()}:{salt.hex()}:{iterations}${hashed_password}"
             else:
-                config_copy[key] = hashed_password
+                config_copy[key] = "****"
     return config_copy
 
 

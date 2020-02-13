@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Callable, Iterable, Tuple
+from typing import Callable, Iterable, Tuple, Dict
 
 import pytest
 
@@ -11,7 +11,9 @@ SourceFactory = Callable[..., PyConnectTestSource]
 
 
 @pytest.fixture
-def source_factory(topic_and_partitions: Tuple[str, int], running_cluster_config) -> Iterable[SourceFactory]:
+def source_factory(
+    topic_and_partitions: Tuple[str, int], running_cluster_config: Dict[str, str]
+) -> Iterable[SourceFactory]:
     """
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSource`.
     """
