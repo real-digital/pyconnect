@@ -50,9 +50,10 @@ def hash_sensitive_values(
     for key in SENSITIVE_KEYS:
         if key in config_copy:
             if log_params:
-                logger.info(f"Hashing {key} with {iterations} {algorithm} iterations and salt {salt}.")
-            hashed_password = hashlib.pbkdf2_hmac(algorithm, config_copy[key].encode(), salt, iterations)
-            config_copy[key] = hashed_password.hex()
+                hashed_password = hashlib.pbkdf2_hmac(algorithm, config_copy[key].encode(), salt, iterations).hex()
+                config_copy[key] = f"$PBKDF2-HMAC-{algorithm.upper()}:{salt.hex()}:{iterations}${hashed_password}"
+            else:
+                config_copy[key] = hashed_password
     return config_copy
 
 

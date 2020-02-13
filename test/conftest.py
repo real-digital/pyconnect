@@ -86,7 +86,7 @@ def cluster_config() -> Dict[str, str]:
 
 
 @pytest.fixture(scope="session")
-def assert_cluster_running(cluster_config) -> None:
+def assert_cluster_running(cluster_config: Dict[str, str]) -> None:
     """
     Makes sure the kafka cluster is running by checking whether the rest-proxy service returns the topics
     """
@@ -98,7 +98,7 @@ def assert_cluster_running(cluster_config) -> None:
 
 
 @pytest.fixture(scope="session")
-def running_cluster_config(cluster_config, assert_cluster_running) -> Dict[str, str]:
+def running_cluster_config(cluster_config: Dict[str, str], assert_cluster_running) -> Dict[str, str]:
     """
     Reads the docker-compose.yml in order to determine the host names and ports of the different services necessary
     for the kafka cluster.
@@ -109,7 +109,7 @@ def running_cluster_config(cluster_config, assert_cluster_running) -> Dict[str, 
 
 
 @pytest.fixture(params=[1, 2, 4], ids=["num_partitions=1", "num_partitions=2", "num_partitions=4"])
-def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
+def topic_and_partitions(request, running_cluster_config: Dict[str, str]) -> Iterable[Tuple[str, int]]:
     """
     Creates a kafka topic consisting of a random 5 character string and being partition into 1, 2 or 4 partitions.
     Then it yields the tuple (topic, n_partitions).
@@ -137,7 +137,7 @@ def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
     ).stdout.decode()
     logger.info(creation_output)
 
-    yield (topic_id, partitions)
+    yield topic_id, partitions
 
     description_output = subprocess.run(
         [
@@ -154,11 +154,13 @@ def topic(request, running_cluster_config) -> Iterable[Tuple[str, int]]:
 
 
 @pytest.fixture
-def plain_avro_producer(running_cluster_config, topic) -> confluent_avro.AvroProducer:
+def plain_avro_producer(
+    running_cluster_config: Dict[str, str], topic_and_partitions: Tuple[str, int]
+) -> confluent_avro.AvroProducer:
     """
     Creates a plain `confluent_kafka.avro.AvroProducer` that can be used to publish messages.
     """
-    topic_id, partitions = topic
+    topic_id, partitions = topic_and_partitions
     producer_config = {
         "bootstrap.servers": running_cluster_config["broker"],
         "schema.registry.url": running_cluster_config["schema-registry"],
@@ -169,14 +171,22 @@ def plain_avro_producer(running_cluster_config, topic) -> confluent_avro.AvroPro
     return producer
 
 
+Record = Tuple[Any, Any]
+RecordList = List[Record]
+
+
 @pytest.fixture
 def produced_messages(
-    records, plain_avro_producer, topic, running_cluster_config, consume_all
+    records: RecordList,
+    plain_avro_producer,
+    topic_and_partitions: Tuple[str, int],
+    running_cluster_config: Dict[str, str],
+    consume_all,
 ) -> Iterable[List[Tuple[str, dict]]]:
     """
     Creates 15 random messages, produces them to the currently active topic and then yields them for the test.
     """
-    topic_id, partitions = topic
+    topic_id, partitions = topic_and_partitions
 
     key, value = records[0]
     key_schema = to_key_schema(key)
@@ -256,8 +266,6 @@ def eof_message(error_message_factory) -> Message:
     return error_message_factory(error_code=KafkaError._PARTITION_EOF)
 
 
-Record = Tuple[Any, Any]
-RecordList = List[Record]
 ConsumeAll = Callable[..., RecordList]
 
 
@@ -270,11 +278,11 @@ def records() -> RecordList:
 
 
 @pytest.fixture
-def consume_all(topic, running_cluster_config) -> Iterable[ConsumeAll]:
+def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: Dict[str, str]) -> Iterable[ConsumeAll]:
     """
     Creates a function that consumes and returns all messages for the current test's topic.
     """
-    topic_id, _ = topic
+    topic_id, _ = topic_and_partitions
 
     consumer = AvroConsumer(
         {
