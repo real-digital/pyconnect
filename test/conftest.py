@@ -294,11 +294,12 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
         }
     )
     consumer.subscribe([topic_id])
+    consumer.list_topics()
 
     def consume_all_() -> RecordList:
         records = []
         while True:
-            msg = consumer.poll(timeout=2)
+            msg = consumer.poll(timeout=10)
             if msg is None:
                 break
             if msg.error() is not None:
