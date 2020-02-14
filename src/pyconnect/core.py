@@ -4,8 +4,10 @@ This module contains central dependencies for all other modules such as base exc
 
 import logging
 from abc import ABCMeta, abstractmethod
+import hashlib
 from enum import Enum
-from typing import Any, Callable, Optional
+import os
+from typing import Any, Callable, Optional, Dict
 
 from confluent_kafka import KafkaException
 from confluent_kafka.cimpl import Message
@@ -24,6 +26,37 @@ def message_repr(msg: Message) -> str:
         f"Message(key={msg.key()!r}, value={msg.value()!r}, topic={msg.topic()!r}, "
         f"partition={msg.partition()!r}, offset={msg.offset()!r}, error={msg.error()!r})"
     )
+
+
+def hide_sensitive_values(
+    config: Dict[str, Any], algorithm: str = "sha256", iterations: int = 100000, hash_sensitive_values: bool = True
+) -> Dict[str, Any]:
+    """
+    This function takes a kakfa configuration dictionary and hashes all present sensitive values (i.e. any keys from
+    "ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key" which are in the dictionary).
+    By default the hashed value is logged with the hashing parameters. If you do not want this behavior and would rather
+    the sensitive_value be replaced by "****", set `hash_sensitive_values` to False.
+    Note: The original dictionary is not modified.
+
+    :param config: Kafka config dictionary.
+    :param algorithm: Hash algorithm.
+    :param iterations: Number of times to run the hashing algorithm.
+    :param hash_sensitive_values: Should the hashing parameters be logged?  Set to `False` if you don't need to be able
+        to check the secret value; this replaces the sensitive value with "****".
+    :return: a dictionary in which the sensitive values are hashed.
+    """
+    SENSITIVE_KEYS = ["ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key"]
+
+    config_copy = config.copy()
+    salt = os.urandom(32)
+    for key in SENSITIVE_KEYS:
+        if key in config_copy:
+            if hash_sensitive_values:
+                hashed_password = hashlib.pbkdf2_hmac(algorithm, config_copy[key].encode(), salt, iterations).hex()
+                config_copy[key] = f"$PBKDF2-HMAC-{algorithm.upper()}:{salt.hex()}:{iterations}${hashed_password}"
+            else:
+                config_copy[key] = "****"
+    return config_copy
 
 
 class PyConnectException(Exception):
