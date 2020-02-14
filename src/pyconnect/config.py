@@ -223,6 +223,10 @@ def _validate_ast_tree(tree: ast.AST) -> None:
             raise ValueError(f"Illegal node found: {node}")
 
 
+def bool_from_string_parser(string: str) -> bool:
+    return string.lower() == "true"
+
+
 def csv_line_reader(separator=",", quoter='"', escaper="\\", strip_chars="\r\t\n ") -> Callable[[str], List[str]]:
     """
     Creates a function that parses a **line** in csv format using the given parameters and returns a list of strings.
@@ -311,6 +315,12 @@ class BaseConfig(dict):
             30 minutes. See :func:`pyconnect.config.timedelta_parser` for more info.
             *Default is 30m*
 
+        **hash_sensitive_values**: bool
+            If true, sensitive values (e.g. sasl.password) from the kafka_opts configurations are
+            hashed and logged with the hashing parameters, so that the values can be validated.
+            If false, the sensitive values are replaced by "****", offering no opprotunity to validate.
+            Default is true.
+
         **kafka_opts**: Dict[str, str]
             Additional options that shall be passed to the underlying Kafka library.
             See https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for documentation.
@@ -325,7 +335,7 @@ class BaseConfig(dict):
     __parsers = {
         "bootstrap_servers": csv_line_reader(),
         "offset_commit_interval": timedelta_parser,
-        "hash_sensitive_values": lambda string: string.lower() == "true",
+        "hash_sensitive_values": bool_from_string_parser,
         "kafka_opts": json.loads,
     }
 
