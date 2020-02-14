@@ -8,7 +8,7 @@ def test_hide_sensitive_values_hashes():
     config = {"sasl.password": "unhashed password", "regular_key": "regular value"}
     hashed_config = hide_sensitive_values(config)
     hash_pattern = r"\$PBKDF2-HMAC-(?P<algo>[^:]+):(?P<salt>[^:]+):(?P<iterations>\d+)\$(?P<hash>\w+)"
-    groups = re.match(hash_pattern, hashed_config["sasl.password"]).groups()
+    groups = re.match(hash_pattern, hashed_config["sasl.password"]).groupdict()
     recomputed_hash = hashlib.pbkdf2_hmac(
         groups["algo"].lower(), b"unhashed password", bytes.fromhex(groups["salt"]), int(groups["iterations"])
     )
