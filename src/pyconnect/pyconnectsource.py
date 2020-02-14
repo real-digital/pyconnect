@@ -35,13 +35,13 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         Creates the underlying instance of :class:`confluent_kafka.avro.AvroProducer` which is used to publish
         messages and producer offsets.
         """
+        hash_sensitive_values = self.config["hash_sensitive_values"]
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "schema.registry.url": self.config["schema_registry"],
-            "hash_sensitive_values": self.config["hash_sensitive_values"]
             **self.config["kafka_opts"],
         }
-        hidden_config = hide_sensitive_values(config, hash_sensitive_values=config["hash_sensitive_values"])
+        hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
         logger.info(f"AvroProducer created with config: {hidden_config}")
         return AvroProducer(config)
 
