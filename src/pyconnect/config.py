@@ -11,7 +11,6 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Pattern, Type, Union
-
 import yaml
 
 from .core import PyConnectException
@@ -326,6 +325,7 @@ class BaseConfig(dict):
     __parsers = {
         "bootstrap_servers": csv_line_reader(),
         "offset_commit_interval": timedelta_parser,
+        "hash_sensitive_values": lambda string: string.lower() == "true",
         "kafka_opts": json.loads,
     }
 
@@ -334,6 +334,7 @@ class BaseConfig(dict):
         self["bootstrap_servers"] = conf_dict.pop("bootstrap_servers")
         self["schema_registry"] = conf_dict.pop("schema_registry")
         self["offset_commit_interval"] = conf_dict.pop("offset_commit_interval", "30m")
+        self["hash_sensitive_values"] = conf_dict.pop("hash_sensitive_values", "true")
         self["kafka_opts"] = conf_dict.pop("kafka_opts", {})
 
         if len(conf_dict) != 0:

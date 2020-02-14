@@ -28,21 +28,21 @@ def message_repr(msg: Message) -> str:
     )
 
 
-def hide_plaintext_sensitive_values(
-    config: Dict[str, Any], algorithm: str = "sha256", iterations: int = 100000, hash_passwords: bool = True
+def hide_sensitive_values(
+    config: Dict[str, Any], algorithm: str = "sha256", iterations: int = 100000, hash_sensitive_values: bool = True
 ) -> Dict[str, Any]:
     """
     This function takes a kakfa configuration dictionary and hashes all present sensitive values (i.e. any keys from
     "ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key" which are in the dictionary).
     By default the hashed value is logged with the hashing parameters. If you do not want this behavior and would rather
-    the sensitive_value be replaced by "****", set `hash_passwords` to False.
+    the sensitive_value be replaced by "****", set `hash_sensitive_values` to False.
     Note: The original dictionary is not modified.
 
     :param config: Kafka config dictionary.
     :param algorithm: Hash algorithm.
     :param iterations: Number of times to run the hashing algorithm.
-    :param hash_passwords: Should the hashing parameters be logged?  Set to `False` if you don't need to be able to
-        check the secret value; this replaces the sensitive value with "****".
+    :param hash_sensitive_values: Should the hashing parameters be logged?  Set to `False` if you don't need to be able
+        to check the secret value; this replaces the sensitive value with "****".
     :return: a dictionary in which the sensitive values are hashed.
     """
     SENSITIVE_KEYS = ["ssl.key.password", "ssl.keystore.password", "sasl.password", "ssl.key.pem", "ssl_key"]
@@ -51,7 +51,7 @@ def hide_plaintext_sensitive_values(
     salt = os.urandom(32)
     for key in SENSITIVE_KEYS:
         if key in config_copy:
-            if hash_passwords:
+            if hash_sensitive_values:
                 hashed_password = hashlib.pbkdf2_hmac(algorithm, config_copy[key].encode(), salt, iterations).hex()
                 config_copy[key] = f"$PBKDF2-HMAC-{algorithm.upper()}:{salt.hex()}:{iterations}${hashed_password}"
             else:

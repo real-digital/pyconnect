@@ -10,7 +10,7 @@ from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError
 
 from .config import SinkConfig
-from .core import BaseConnector, Status, message_repr, hide_plaintext_sensitive_values
+from .core import BaseConnector, Status, message_repr, hide_sensitive_values
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +150,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "group.id": self.config["group_id"],
             "schema.registry.url": self.config["schema_registry"],
+            "hash_sensitive_values": self.config["hash_sensitive_values"],
             # We need to commit offsets manually once we're sure it got saved
             # to the sink
             "enable.auto.commit": False,
@@ -161,8 +162,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             **self.config["kafka_opts"],
         }
         consumer = RichAvroConsumer(config)
-        hashed_config = hide_plaintext_sensitive_values(config)
-        logger.info(f"AvroConsumer created with config: {hashed_config}")
+        hidden_config = hide_sensitive_values(config, hash_sensitive_values=config["hash_sensitive_values"])
+        logger.info(f"AvroConsumer created with config: {hidden_config}")
         # noinspection PyArgumentList
         consumer.subscribe(self.config["topics"], on_assign=self._on_assign, on_revoke=self._on_revoke)
         return consumer

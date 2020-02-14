@@ -8,7 +8,7 @@ from confluent_kafka.cimpl import KafkaError, TopicPartition
 
 from .avroparser import to_key_schema, to_value_schema
 from .config import SourceConfig
-from .core import BaseConnector, PyConnectException, Status, hide_plaintext_sensitive_values
+from .core import BaseConnector, PyConnectException, Status, hide_sensitive_values
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,11 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "schema.registry.url": self.config["schema_registry"],
+            "hash_sensitive_values": self.config["hash_sensitive_values"]
             **self.config["kafka_opts"],
         }
-        hashed_config = hide_plaintext_sensitive_values(config)
-        logger.info(f"AvroProducer created with config: {hashed_config}")
+        hidden_config = hide_sensitive_values(config, hash_sensitive_values=config["hash_sensitive_values"])
+        logger.info(f"AvroProducer created with config: {hidden_config}")
         return AvroProducer(config)
 
     def _make_offset_consumer(self) -> AvroConsumer:
