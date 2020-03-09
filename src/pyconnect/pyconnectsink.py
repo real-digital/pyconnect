@@ -375,7 +375,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     def _commit(self) -> None:
         offsets = list(self.__offsets.values())
         logger.info(f"Committing offsets: {offsets}")
-        self._consumer.commit(offsets=offsets)
+        self._consumer.commit(offsets=offsets, asynchronous=False)
 
     def on_shutdown(self):
         """
