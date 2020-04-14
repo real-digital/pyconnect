@@ -7,6 +7,7 @@ verify_ssl = true
 
 [packages]
 pycodestyle = "*"
+pyconnect = {editable = true,path = "."}
 
 [requires]
 python_version = "3.6"
