@@ -5,7 +5,7 @@ required = ["confluent-kafka[avro]>=1.0", "pyaml>=3.13", "avro-python3"]
 
 setup(
     name="pyconnect",
-    version="0.4.1",
+    version="0.4.2",
     packages=["pyconnect"],
     package_dir={"": "src"},
     # minimal requirements to run pyconnect
