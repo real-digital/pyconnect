@@ -4,7 +4,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pyconnect = {path = ".",editable = true,extras = ["test", "dev"]}
 
 [packages]
 pycodestyle = "*"

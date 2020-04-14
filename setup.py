@@ -1,7 +1,7 @@
 from setuptools import setup
 
 # TODO remove avro-python3 version pin once they fixed the pycodestyle import
-required = ["confluent-kafka[avro]>=1.0", "pyaml>=3.13", "avro-python3<1.9"]
+required = ["confluent-kafka[avro]>=1.0", "pyaml>=3.13", "avro-python3==1.9.1"]
 
 
 setup(
