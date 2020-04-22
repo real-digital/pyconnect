@@ -254,8 +254,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _on_message_received(self, msg: Message):
         self.__eof_reached[(msg.topic(), msg.partition())] = False
-        self._unsafe_call_and_set_status(self.on_message_received, msg)
         self._update_offset_from_message(msg)
+        self._unsafe_call_and_set_status(self.on_message_received, msg)
 
     def _update_offset_from_message(self, msg: Message):
         """
@@ -376,20 +376,16 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _commit(self) -> None:
         offsets = list(self.__offsets.values())
-        if not offsets:
-            logger.info("No offsets to commit.")
-        else:
-            logger.info(f"Committing offsets: {offsets}")
-            self._consumer.commit(offsets=offsets, asynchronous=False)
-        # try:
+        logger.info(f"Committing offsets: {offsets}")
+        self._consumer.commit(offsets=offsets, asynchronous=False)
+        # TODO: revert to this maybe
+        # if not offsets:
+        #     logger.info("No offsets to commit.")
+        # else:
+        #     logger.info(f"Committing offsets: {offsets}")
         #     self._consumer.commit(offsets=offsets, asynchronous=False)
-        # except KafkaException as e:
-        #     kafka_error: KafkaError = e.args[0]
-        #     if kafka_error.code() == KAFKA_NO_OFFSET_CODE:
-        #         # Treat no offsets error as success https://github.com/confluentinc/confluent-kafka-python/issues/295
-        #         logger.info("No new offsets to commit.")
-        #     else:
-        #         raise e
+
+
 
     def on_shutdown(self):
         """
