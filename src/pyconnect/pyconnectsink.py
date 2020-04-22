@@ -7,14 +7,12 @@ from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.cimpl import KafkaError, KafkaException
+from confluent_kafka.cimpl import KafkaError
 
 from .config import SinkConfig
 from .core import BaseConnector, Status, message_repr, hide_sensitive_values
 
 logger = logging.getLogger(__name__)
-
-KAFKA_NO_OFFSET_CODE = -168
 
 
 class MessageType(Enum):
@@ -254,8 +252,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _on_message_received(self, msg: Message):
         self.__eof_reached[(msg.topic(), msg.partition())] = False
-        self._update_offset_from_message(msg)
         self._unsafe_call_and_set_status(self.on_message_received, msg)
+        self._update_offset_from_message(msg)
 
     def _update_offset_from_message(self, msg: Message):
         """
@@ -376,16 +374,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _commit(self) -> None:
         offsets = list(self.__offsets.values())
-        logger.info(f"Committing offsets: {offsets}")
-        self._consumer.commit(offsets=offsets, asynchronous=False)
-        # TODO: revert to this maybe
-        # if not offsets:
-        #     logger.info("No offsets to commit.")
-        # else:
-        #     logger.info(f"Committing offsets: {offsets}")
-        #     self._consumer.commit(offsets=offsets, asynchronous=False)
-
-
+        if not offsets:
+            logger.info("No offsets to commit.")
+        else:
+            logger.info(f"Committing offsets: {offsets}")
+            self._consumer.commit(offsets=offsets, asynchronous=False)
 
     def on_shutdown(self):
         """
