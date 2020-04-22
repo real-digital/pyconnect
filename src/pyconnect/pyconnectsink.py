@@ -7,12 +7,14 @@ from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.cimpl import KafkaError
+from confluent_kafka.cimpl import KafkaError, KafkaException
 
 from .config import SinkConfig
 from .core import BaseConnector, Status, message_repr, hide_sensitive_values
 
 logger = logging.getLogger(__name__)
+
+KAFKA_NO_OFFSET_CODE = -168
 
 
 class MessageType(Enum):
@@ -376,6 +378,15 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         offsets = list(self.__offsets.values())
         logger.info(f"Committing offsets: {offsets}")
         self._consumer.commit(offsets=offsets, asynchronous=False)
+        # try:
+        #     self._consumer.commit(offsets=offsets, asynchronous=False)
+        # except KafkaException as e:
+        #     kafka_error: KafkaError = e.args[0]
+        #     if kafka_error.code() == KAFKA_NO_OFFSET_CODE:
+        #         # Treat no offsets error as success https://github.com/confluentinc/confluent-kafka-python/issues/295
+        #         logger.info("No new offsets to commit.")
+        #     else:
+        #         raise e
 
     def on_shutdown(self):
         """

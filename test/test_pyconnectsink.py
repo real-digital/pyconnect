@@ -291,3 +291,8 @@ def test_no_msg_handling_after_failed_flush(sink_factory: SinkFactory, failing_c
         pytest.fail("No Exception raised!")
 
     assert not connect_sink.on_message_received.called
+
+def test_commit_without_new_offset_does_not_fail(sink_factory: SinkFactory):
+    connect_sink = sink_factory()
+    # want to see error
+    connect_sink._commit()
