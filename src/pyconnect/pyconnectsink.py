@@ -376,8 +376,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
 
     def _commit(self) -> None:
         offsets = list(self.__offsets.values())
-        logger.info(f"Committing offsets: {offsets}")
-        self._consumer.commit(offsets=offsets) # TODO: put back, asynchronous=False)
+        if not offsets:
+            logger.info("No offsets to commit.")
+        else:
+            logger.info(f"Committing offsets: {offsets}")
+            self._consumer.commit(offsets=offsets, asynchronous=False)
         # try:
         #     self._consumer.commit(offsets=offsets, asynchronous=False)
         # except KafkaException as e:
