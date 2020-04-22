@@ -292,7 +292,20 @@ def test_no_msg_handling_after_failed_flush(sink_factory: SinkFactory, failing_c
 
     assert not connect_sink.on_message_received.called
 
-def test_commit_without_new_offset_does_not_fail(sink_factory: SinkFactory):
+
+def test_commit_without_new_offset_does_not_fail(sink_factory: SinkFactory, message_factory):
+    # setup
     connect_sink = sink_factory()
-    # want to see error
+    connect_sink._consumer.poll.side_effect = [message_factory()] * 5 + [None]
+    connect_sink.on_no_message_received = mock.Mock(return_value=Status.STOPPED)
+    connect_sink.on_flush = mock.Mock(return_value=None)
+    connect_sink.need_flush = mock.Mock(return_value=False)
+
+    # perform
+    connect_sink.run()
+
+    # test
+    connect_sink._consumer.commit.assert_called_once()
+    connect_sink.on_flush.assert_called_once()
+    connect_sink._commit()
     connect_sink._commit()
