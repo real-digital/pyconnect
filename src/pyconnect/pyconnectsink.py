@@ -378,8 +378,9 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         if not offsets:
             logger.info("No offsets to commit.")
         else:
+            max_attempts: int = 2
             attempt_count: int = 1
-            while attempt_count <= 2:
+            while attempt_count <= max_attempts:
                 try:
                     logger.info(f"Committing offsets: {offsets}")
                     self._consumer.commit(offsets=offsets, asynchronous=False)
@@ -387,7 +388,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
                     logger.error(
                         f"Kafka exception occurred while comitting offsets (attempt {attempt_count}): {str(ke)}"
                     )
-                    if attempt_count == 2:
+                    if attempt_count == max_attempts:
                         exit(1)
                     else:
                         attempt_count += 1
