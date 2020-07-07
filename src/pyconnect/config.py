@@ -3,19 +3,24 @@ This module contains the classes which are used as configurations for the connec
 classes can be subclassed to extend them with additional fields and sanity checks.
 """
 import ast
+import builtins
 import datetime as dt
 import inspect
 import json
 import logging
 import os
 import re
+import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Pattern, Type, Union
+
+from loguru import logger
+
+import sys
 import yaml
 
 from .core import PyConnectException
 
-logger = logging.getLogger(__name__)
 
 SanityChecker = Callable[["BaseConfig"], None]
 SanityCheck = Union[str, SanityChecker]
@@ -275,6 +280,80 @@ def csv_line_reader(separator=",", quoter='"', escaper="\\", strip_chars="\r\t\n
     return line_reader
 
 
+class InterceptHandler(logging.Handler):
+    def emit(self, record):
+        # Get corresponding Loguru level if it exists
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message
+        frame, depth = logging.currentframe(), 2
+        while frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
+
+def configure_logging(use_stderr=False) -> None:
+    """
+    Configure logging so every log, exception, warning or print goes through loguru. This makes sure we only get
+    messages that are formatted the way we want.
+
+    :param use_stderr: Use stderr instead of stdout. Useful when cli commands are used in a pipe and need to provide
+                       output in a certain format
+    """
+    handlers: List[Dict] = [
+        {
+            "sink": sys.stderr if use_stderr else sys.stdout,
+            "format": "{time} | {level} | {thread.name}:{name}:{function}:{line} | {message}",
+        }
+    ]
+
+    requested_level = os.getenv("LOGURU_LEVEL")
+    if requested_level:
+        handlers[0]["level"] = requested_level
+    else:
+        handlers[0]["level"] = "DEBUG"
+
+    requested_colorize = os.getenv("LOGURU_COLORIZE")
+    if requested_colorize:
+        colorize = requested_colorize.lower() not in ("0", "f", "n", "false", "no")
+        handlers[0]["colorize"] = colorize
+    else:
+        handlers[0]["colorize"] = False
+
+    logger.configure(handlers=handlers)
+
+    warnings.showwarning = loguru_showwarning
+    builtins.print = loguru_print_override
+    sys.excepthook = loguru_excepthook
+    # noinspection PyArgumentList
+    logging.basicConfig(handlers=[InterceptHandler()], level=0)
+
+
+original_print = builtins.print
+
+
+def loguru_print_override(*args, sep=" ", end="\n", file=None):
+    if file not in (None, sys.stderr, sys.stdout):
+        original_print(*args, sep=sep, end=end, file=file)
+    msg = sep.join(map(str, args))
+    logger.opt(depth=1).info(msg)
+
+
+def loguru_excepthook(exctype, value, traceback):
+    logger.opt(exception=(exctype, value, traceback)).error("Unhandled Exception Occurred!")
+    sys.exit(1)
+
+
+def loguru_showwarning(message, category, filename, lineno, file=None, line=None):
+    warning_msg = f"{category.__name__}: {message}"
+    logger.opt(depth=2).warning(warning_msg)
+
+
 class BaseConfig(dict):
     """
     This class represents the basic configuration object containing all config variables that are needed by every
@@ -324,6 +403,10 @@ class BaseConfig(dict):
         **kafka_opts**: Dict[str, str]
             Additional options that shall be passed to the underlying Kafka library.
             See https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for documentation.
+
+        **unify_logging**: bool
+            Use a common logging JSON format and intercept all logging messages through loguru.
+            Default is true.
     """
 
     __sanity_checks = [
@@ -336,6 +419,7 @@ class BaseConfig(dict):
         "bootstrap_servers": csv_line_reader(),
         "offset_commit_interval": timedelta_parser,
         "hash_sensitive_values": bool_from_string_parser,
+        "unify_logging": bool_from_string_parser,
         "kafka_opts": json.loads,
     }
 
@@ -345,6 +429,7 @@ class BaseConfig(dict):
         self["schema_registry"] = conf_dict.pop("schema_registry")
         self["offset_commit_interval"] = conf_dict.pop("offset_commit_interval", "30m")
         self["hash_sensitive_values"] = conf_dict.pop("hash_sensitive_values", "true")
+        self["unify_logging"] = conf_dict.pop("unify_logging", "true")
         self["kafka_opts"] = conf_dict.pop("kafka_opts", {})
 
         if len(conf_dict) != 0:

@@ -1,16 +1,15 @@
-import logging
 from abc import ABCMeta, abstractmethod
 from time import sleep
 from typing import Any, Optional, Tuple
 
 from confluent_kafka.avro import AvroConsumer, AvroProducer
 from confluent_kafka.cimpl import KafkaError, TopicPartition
+from loguru import logger
 
+from pyconnect.config import configure_logging
 from .avroparser import to_key_schema, to_value_schema
 from .config import SourceConfig
 from .core import BaseConnector, PyConnectException, Status, hide_sensitive_values
-
-logger = logging.getLogger(__name__)
 
 
 class PyConnectSource(BaseConnector, metaclass=ABCMeta):
@@ -24,6 +23,8 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
     def __init__(self, config: SourceConfig) -> None:
         super().__init__()
         self.config = config
+        if self.config["unify_logging"]:
+            configure_logging()
         self._producer = self._make_producer()
         self._offset_consumer = self._make_offset_consumer()
         self._key_schema: Optional[str] = None
