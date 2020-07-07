@@ -40,17 +40,17 @@ matrix:
     python: 3.7
     before_install: []
     env:
-    - TEST_CMD="flake8 esque/"
+    - TEST_CMD="flake8 src/pyconnect/"
   - name: '3.6'
     python: 3.6
   - name: '3.7'
     python: 3.7
-deploy:
-  provider: pypi
-  user: real.digital
-  on:
-    tags: true
-    condition: "$TRAVIS_PYTHON_VERSION == '3.6'"
-    repo: real-digital/esque
-  password:
-    secure: ugyCfnm6vhE5L6hisOxjeAetiCIWH5UVDH79yoZXeFTevRd3HDpG9t93lDdGQsSz6wKb/eSlmFrbQu9ftV+kqAHfqEv6P5iG8WD9SLt8rMr+eKc+148ag00TyMknRGkSzszZx01DoEdVfSikagnJXfq5A1x6wddSzUVVsTo6icylS+ukU9QySKHqsxYqPZ2W5vQIEOjXO7Rf5abo3PGMVlzfg36tltCRFTNn1blXC9VbDd/Wj+OeY3bBIJ3Y0VYspSLbBmaULTu/j+81coAXrCRpMAhszwXLkIJaBspvxLIN4XcIwryXCIRrjpGBA7tQ5wJvw+/V04QGyNi4Tsc9DNQ6LEAt7c9X2VOdcQAYfRFIYo7JuhFEmOxpHH+FxtdmOO8lppofNcSOrOHnmJebUavANbDkV30H/jwzI1PVyqxrI6J2rhbKBOSAv74rUZMfsrrEOgDcwA9pqn3aBFos/G7eHKVE9Kk43txI3qwWEsFekVUlssPfZ7ZToV75MNrKfFyVvKdq960e9aIMO0mJJLuR9hnwScT6N87cb7sQSaSL5ZIam8DFefKxkkGgPf4V7gKynQY4jtPXHaWJ0zmdsxbSCQ7j2BFklubPMGXpgb9vMIHB8ksgNzwN1OUpbbaE2/Nn0aFFr6JQPkm+Z8df/xRez7G1RUvgybSNxgVfV1w=
+#deploy:
+#  provider: pypi
+#  user: real.digital
+#  on:
+#    tags: true
+#    condition: "$TRAVIS_PYTHON_VERSION == '3.6'"
+#    repo: real-digital/esque
+#  password:
+#    secure: ugyCfnm6vhE5L6hisOxjeAetiCIWH5UVDH79yoZXeFTevRd3HDpG9t93lDdGQsSz6wKb/eSlmFrbQu9ftV+kqAHfqEv6P5iG8WD9SLt8rMr+eKc+148ag00TyMknRGkSzszZx01DoEdVfSikagnJXfq5A1x6wddSzUVVsTo6icylS+ukU9QySKHqsxYqPZ2W5vQIEOjXO7Rf5abo3PGMVlzfg36tltCRFTNn1blXC9VbDd/Wj+OeY3bBIJ3Y0VYspSLbBmaULTu/j+81coAXrCRpMAhszwXLkIJaBspvxLIN4XcIwryXCIRrjpGBA7tQ5wJvw+/V04QGyNi4Tsc9DNQ6LEAt7c9X2VOdcQAYfRFIYo7JuhFEmOxpHH+FxtdmOO8lppofNcSOrOHnmJebUavANbDkV30H/jwzI1PVyqxrI6J2rhbKBOSAv74rUZMfsrrEOgDcwA9pqn3aBFos/G7eHKVE9Kk43txI3qwWEsFekVUlssPfZ7ZToV75MNrKfFyVvKdq960e9aIMO0mJJLuR9hnwScT6N87cb7sQSaSL5ZIam8DFefKxkkGgPf4V7gKynQY4jtPXHaWJ0zmdsxbSCQ7j2BFklubPMGXpgb9vMIHB8ksgNzwN1OUpbbaE2/Nn0aFFr6JQPkm+Z8df/xRez7G1RUvgybSNxgVfV1w=
