@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.cimpl import KafkaError
+from confluent_kafka.cimpl import KafkaError, KafkaException
 from loguru import logger
 
 from pyconnect.config import configure_logging
@@ -378,8 +378,19 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         if not offsets:
             logger.info("No offsets to commit.")
         else:
-            logger.info(f"Committing offsets: {offsets}")
-            self._consumer.commit(offsets=offsets, asynchronous=False)
+            attempt_count: int = 1
+            while attempt_count <= 2:
+                try:
+                    logger.info(f"Committing offsets: {offsets}")
+                    self._consumer.commit(offsets=offsets, asynchronous=False)
+                except KafkaException as ke:
+                    logger.error(
+                        f"Kafka exception occurred while comitting offsets (attempt {attempt_count}): {str(ke)}"
+                    )
+                    if attempt_count == 2:
+                        exit(1)
+                    else:
+                        attempt_count += 1
 
     def on_shutdown(self):
         """
