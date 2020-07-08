@@ -1,8 +1,6 @@
 """
 This module contains central dependencies for all other modules such as base exceptions or base classes
 """
-
-import logging
 from abc import ABCMeta, abstractmethod
 import hashlib
 from enum import Enum
@@ -11,8 +9,7 @@ from typing import Any, Callable, Optional, Dict
 
 from confluent_kafka import KafkaException
 from confluent_kafka.cimpl import Message
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def message_repr(msg: Message) -> str:

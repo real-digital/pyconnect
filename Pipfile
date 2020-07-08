@@ -8,6 +8,7 @@ pyconnect = {path = ".",editable = true,extras = ["test", "dev"]}
 
 [packages]
 pycodestyle = "*"
+loguru = ">=^0.4.0"
 
 [requires]
 python_version = "3.6"

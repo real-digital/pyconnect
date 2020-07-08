@@ -1,4 +1,3 @@
-import logging
 import struct
 import warnings
 from abc import ABCMeta, abstractmethod
@@ -8,11 +7,11 @@ from typing import Dict, List, Optional, Tuple
 from confluent_kafka import Message, TopicPartition
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError
+from loguru import logger
 
+from pyconnect.config import configure_logging
 from .config import SinkConfig
 from .core import BaseConnector, Status, message_repr, hide_sensitive_values
-
-logger = logging.getLogger(__name__)
 
 
 class MessageType(Enum):
@@ -140,6 +139,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
 
+        if self.config["unify_logging"]:
+            configure_logging()
         self.current_message: Optional[Message] = None
         self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
         self.__eof_reached: Dict[Tuple[str, int], bool] = {}
