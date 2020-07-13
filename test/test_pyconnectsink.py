@@ -18,6 +18,7 @@ def sink_factory():
             bootstrap_servers="localhost",
             schema_registry="localhost",
             offset_commit_interval=1,
+            sink_commit_retry_count=2,
             group_id="group_id",
             poll_timeout=1,
             topics="",

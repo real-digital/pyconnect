@@ -100,6 +100,7 @@ def test_host_splitting():
             bootstrap_servers=servers,
             schema_registry="localhost",
             offset_commit_interval=1,
+            sink_commit_retry_count=2,
             group_id="groupid",
             topics="topics",
         )
@@ -114,12 +115,14 @@ def test_sanity_check_success():
             bootstrap_servers="localhost",
             schema_registry="localhost",
             offset_commit_interval=1,
+            sink_commit_retry_count=2,
             group_id="groupid",
             topics="topics",
         )
     )
 
     assert config["offset_commit_interval"] == 1
+    assert config["sink_commit_retry_count"] == 2
 
 
 def test_sanity_check_failure(caplog):
@@ -136,6 +139,21 @@ def test_sanity_check_failure_subclass(caplog):
                 bootstrap_servers="localhost",
                 schema_registry="locahlost",
                 offset_commit_interval=-1,
+                group_id="groupid",
+                topics="topics",
+            )
+        )
+
+
+def test_sanity_check_failure_commit_retry(caplog):
+    caplog.set_level(logging.DEBUG)
+    with pytest.raises(SanityError):
+        SinkConfig(
+            dict(
+                bootstrap_servers="localhost",
+                schema_registry="locahlost",
+                offset_commit_interval=5,
+                sink_commit_retry_count=-2,
                 group_id="groupid",
                 topics="topics",
             )

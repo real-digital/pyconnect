@@ -232,6 +232,10 @@ def bool_from_string_parser(string: str) -> bool:
     return string.lower() == "true"
 
 
+def int_from_string_parser(string: str) -> int:
+    return int(string)
+
+
 def csv_line_reader(separator=",", quoter='"', escaper="\\", strip_chars="\r\t\n ") -> Callable[[str], List[str]]:
     """
     Creates a function that parses a **line** in csv format using the given parameters and returns a list of strings.
@@ -395,6 +399,10 @@ class BaseConfig(dict):
             30 minutes. See :func:`pyconnect.config.timedelta_parser` for more info.
             *Default is 30m*
 
+        **sink_commit_retry_count**: int
+            The number of retries for the Sink when committing offsets.
+            Default: 2
+
         **hash_sensitive_values**: bool
             If true, sensitive values (e.g. sasl.password) from the kafka_opts configurations are
             hashed and logged with the hashing parameters, so that the values can be validated.
@@ -412,6 +420,7 @@ class BaseConfig(dict):
 
     __sanity_checks = [
         "{offset_commit_interval}>0",
+        "{sink_commit_retry_count}>0",
         check_field_is_valid_url("schema_registry"),
         check_field_is_valid_url("bootstrap_servers"),
     ]
@@ -419,6 +428,7 @@ class BaseConfig(dict):
     __parsers = {
         "bootstrap_servers": csv_line_reader(),
         "offset_commit_interval": timedelta_parser,
+        "sink_commit_retry_count": int_from_string_parser,
         "hash_sensitive_values": bool_from_string_parser,
         "unify_logging": bool_from_string_parser,
         "kafka_opts": json.loads,
@@ -429,6 +439,7 @@ class BaseConfig(dict):
         self["bootstrap_servers"] = conf_dict.pop("bootstrap_servers")
         self["schema_registry"] = conf_dict.pop("schema_registry")
         self["offset_commit_interval"] = conf_dict.pop("offset_commit_interval", "30m")
+        self["sink_commit_retry_count"] = conf_dict.pop("sink_commit_retry_count", "2")
         self["hash_sensitive_values"] = conf_dict.pop("hash_sensitive_values", "true")
         self["unify_logging"] = conf_dict.pop("unify_logging", "true")
         self["kafka_opts"] = conf_dict.pop("kafka_opts", {})
