@@ -1,3 +1,6 @@
+### Version 0.4.5
+* Enabled the Sink to retry committing offsets in case of failure. The maximum number of retries is configurable through 
+the `sink_commit_retry_count` field.
 ### Version 0.4.4
 * Enable JSON logging using loguru
 ### Version 0.4.3
