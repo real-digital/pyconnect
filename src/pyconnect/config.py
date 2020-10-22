@@ -311,7 +311,7 @@ def configure_logging(use_stderr=False) -> None:
         {
             "sink": sys.stderr if use_stderr else sys.stdout,
             "format": "{time} | {level} | {thread.name}:{name}:{function}:{line} | {message}",
-            "serialize": True,
+            "serialize": False,
         }
     ]
 

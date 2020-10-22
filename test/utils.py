@@ -14,7 +14,6 @@ from unittest import mock
 
 import pytest
 from confluent_kafka.cimpl import Message
-
 from pyconnect.config import SourceConfig
 from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
@@ -289,7 +288,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         super().on_startup()
         logger.info("######## CONSUMER STARTUP #########")
         logger.info(f"Config: {self.config!r}")
-        self._check_status()
+        # self._check_status()
 
     def need_flush(self) -> bool:
         return len(self.message_buffer) == self.flush_interval
@@ -302,7 +301,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
     def on_shutdown(self) -> None:
         new_status = super().on_shutdown()
         logger.info("######## CONSUMER SHUTDOWN #########")
-        self._check_status()
+        # self._check_status()
         logger.info("Flushed messages:\n" + pformat(self.flushed_messages, indent=2))
         return new_status
 

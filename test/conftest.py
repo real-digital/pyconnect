@@ -1,20 +1,20 @@
 import itertools as it
 import logging
-import os
 import random
-import subprocess
 from functools import partial
-from test.utils import CLI_DIR, TEST_DIR, TestException, rand_text
+from test.utils import TEST_DIR, TestException, rand_text
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
+import pykafka
 import pytest
-import yaml
 from confluent_kafka import avro as confluent_avro
+from confluent_kafka.admin import AdminClient
 from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.cimpl import KafkaError, Message
+from confluent_kafka.cimpl import KafkaError, Message, NewTopic
 from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.core import Status
+from pykafka import KafkaClient, Topic
 
 logging.basicConfig(
     format="%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s",
@@ -42,6 +42,11 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_e2e)
 
 
+@pytest.fixture()
+def confluent_config() -> Dict[str, str]:
+    return {"bootstrap.servers": "localhost:9092", "security.protocol": "PLAINTEXT"}
+
+
 @pytest.fixture(params=[Status.CRASHED, TestException()], ids=["Status_CRASHED", "TestException"])
 def failing_callback(request):
     """
@@ -60,26 +65,13 @@ def cluster_config() -> Dict[str, str]:
     for the kafka cluster.
     :return: A map from service to url.
     """
-    with (TEST_DIR.parent / "docker-compose.yml").open("r") as infile:
-        yml_config = yaml.safe_load(infile)
 
-    hosts = {"broker": "", "schema-registry": "", "rest-proxy": "", "zookeeper": ""}
-
-    for service, conf in yml_config["services"].items():
-        port = conf["ports"][0].split(":")[0]
-        hosts[service] = f"{service}:{port}"
-
-    for service in hosts.keys():
-        env_var = (service + "_url").upper().replace("-", "_")
-        if env_var in os.environ:
-            hosts[service] = os.environ[env_var]
-
-    if "http" not in hosts["schema-registry"]:
-        hosts["schema-registry"] = "http://" + hosts["schema-registry"]
-    if "http" not in hosts["rest-proxy"]:
-        hosts["rest-proxy"] = "http://" + hosts["rest-proxy"]
-
-    assert all(hosts.values()), "Not all service urls have been defined!"
+    hosts = {
+        "broker": "localhost:9092",
+        "schema-registry": "http://localhost:8081",
+        "rest-proxy": "http://localhost:8082",
+        "zookeeper": "localhost:2181",
+    }
 
     return hosts
 
@@ -107,8 +99,15 @@ def running_cluster_config(cluster_config: Dict[str, str], assert_cluster_runnin
     return cluster_config
 
 
+@pytest.fixture()
+def confluent_admin_client(confluent_config: Dict[str, str]) -> AdminClient:
+    return AdminClient(confluent_config)
+
+
 @pytest.fixture(params=[1, 2, 4], ids=["num_partitions=1", "num_partitions=2", "num_partitions=4"])
-def topic_and_partitions(request, running_cluster_config: Dict[str, str]) -> Iterable[Tuple[str, int]]:
+def topic_and_partitions(
+    request, confluent_admin_client: AdminClient, running_cluster_config: Dict[str, str]
+) -> Iterable[Tuple[str, int]]:
     """
     Creates a kafka topic consisting of a random 5 character string and being partition into 1, 2 or 4 partitions.
     Then it yields the tuple (topic, n_partitions).
@@ -119,37 +118,11 @@ def topic_and_partitions(request, running_cluster_config: Dict[str, str]) -> Ite
     topic_id = rand_text(5)
     partitions = request.param
 
-    creation_output = subprocess.run(
-        [
-            CLI_DIR / "kafka-topics.sh",
-            "--zookeeper",
-            running_cluster_config["zookeeper"],
-            "--create",
-            "--topic",
-            topic_id,
-            "--partitions",
-            str(partitions),
-            "--replication-factor",
-            "1",
-        ],
-        stdout=subprocess.PIPE,
-    ).stdout.decode()
-    logger.info(creation_output)
+    confluent_admin_client.create_topics([NewTopic(topic_id, num_partitions=partitions, replication_factor=1)])
 
     yield topic_id, partitions
 
-    description_output = subprocess.run(
-        [
-            CLI_DIR / "kafka-topics.sh",
-            "--zookeeper",
-            running_cluster_config["zookeeper"],
-            "--describe",
-            "--topic",
-            topic_id,
-        ],
-        stdout=subprocess.PIPE,
-    ).stdout.decode()
-    logger.info(description_output)
+    confluent_admin_client.delete_topics([NewTopic(topic_id, num_partitions=partitions, replication_factor=1)])
 
 
 @pytest.fixture
@@ -175,9 +148,16 @@ RecordList = List[Record]
 
 
 @pytest.fixture
+def pykafka_client():
+    return pykafka.client.KafkaClient(hosts="localhost:9092", exclude_internal_topics=False, broker_version="1.0.0")
+
+
+@pytest.fixture
 def produced_messages(
     records: RecordList,
     plain_avro_producer,
+    confluent_admin_client: AdminClient,
+    pykafka_client: KafkaClient,
     topic_and_partitions: Tuple[str, int],
     running_cluster_config: Dict[str, str],
     consume_all,
@@ -196,26 +176,11 @@ def produced_messages(
 
     plain_avro_producer.flush()
 
-    topic_highwater = subprocess.run(
-        [
-            CLI_DIR / "kafka-run-class.sh",
-            "kafka.tools.GetOffsetShell",
-            "--broker-list",
-            running_cluster_config["broker"],
-            "--topic",
-            topic_id,
-            "--time",
-            "-1",
-            "--offsets",
-            "1",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=True,
-    ).stdout.decode()
-    logger.info(f"Topic highwater:\n{topic_highwater}")
-    assert len(topic_highwater.splitlines()) == partitions, "Not all partitions present"
-
+    pykafka_topic: Topic = pykafka_client.cluster.topics[topic_id]
+    topic_highwater: List[int] = pykafka_topic.latest_available_offsets()
+    logger.info(f"Topic highwater: {topic_highwater}")
+    assert len(topic_highwater) == partitions, "Not all partitions present"
+    assert len(records) == sum(partition.offset[0] for partition in topic_highwater.values()), ""
     yield records
 
 
