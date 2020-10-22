@@ -4,6 +4,7 @@ import os
 import random
 import subprocess
 from functools import partial
+from test.utils import CLI_DIR, TEST_DIR, TestException, rand_text
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
@@ -12,10 +13,8 @@ import yaml
 from confluent_kafka import avro as confluent_avro
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError, Message
-
 from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.core import Status
-from test.utils import CLI_DIR, TEST_DIR, TestException, rand_text
 
 logging.basicConfig(
     format="%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s",
@@ -30,14 +29,14 @@ def pytest_configure(config):
 
 
 def pytest_addoption(parser):
-    parser.addoption("--run-e2e", action="store_true", default=False, help="run end to end tests")
+    parser.addoption("--integration", action="store_true", default=False, help="run end to end tests")
 
 
 def pytest_collection_modifyitems(config, items):
-    if config.getoption("--run-e2e"):
-        # --run-e2e given in cli: do not skip e2e tests
+    if config.getoption("--integration"):
+        # --integration given in cli: do not skip e2e tests
         return
-    skip_e2e = pytest.mark.skip(reason="need --run-e2e option to run")
+    skip_e2e = pytest.mark.skip(reason="need --integration option to run")
     for item in items:
         if "e2e" in item.keywords:
             item.add_marker(skip_e2e)
@@ -61,7 +60,7 @@ def cluster_config() -> Dict[str, str]:
     for the kafka cluster.
     :return: A map from service to url.
     """
-    with (TEST_DIR / "docker-compose.yml").open("r") as infile:
+    with (TEST_DIR.parent / "docker-compose.yml").open("r") as infile:
         yml_config = yaml.safe_load(infile)
 
     hosts = {"broker": "", "schema-registry": "", "rest-proxy": "", "zookeeper": ""}
