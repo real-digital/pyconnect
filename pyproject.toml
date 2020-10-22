@@ -4,7 +4,7 @@ version = "0.4.5"
 description='A Python implementation of "Kafka Connect"-like functionality'
 authors = ["real.digital <opensource@real-digital.de>"]
 exclude = ["tests/**/*"]
-lucense = "MIT"
+license = "MIT"
 include = [
     "README.md",
     "LICENSE",
