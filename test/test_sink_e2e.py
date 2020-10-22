@@ -1,11 +1,11 @@
 import threading
-from typing import Callable, Tuple, Dict, List
+from typing import Callable, Dict, List, Tuple
 from unittest import mock
 
 import pytest
-
 from pyconnect.config import SinkConfig
 from pyconnect.core import Status
+
 from .utils import PyConnectTestSink, TestException, compare_lists_unordered
 
 ConnectSinkFactory = Callable[..., PyConnectTestSink]

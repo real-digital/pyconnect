@@ -35,7 +35,8 @@ services:
     environment:
       CONFIG_PATH: 'confluent-community/etc/kafka/server.properties'
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'False'
+      # Tests expect auto create to be enabled
+#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'False'
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'LOCAL:PLAINTEXT,PLAINTEXT:PLAINTEXT'
       KAFKA_LISTENERS: 'LOCAL://:9092,PLAINTEXT://kafka:9093'
