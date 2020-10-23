@@ -1,2 +1,0 @@
-class SinkConfigError(ValueError):
-    pass
