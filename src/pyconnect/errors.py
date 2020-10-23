@@ -1,0 +1,2 @@
+class SinkConfigError(ValueError):
+    pass
