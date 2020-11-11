@@ -3,6 +3,7 @@ from typing import Callable, Dict, List, Tuple
 from unittest import mock
 
 import pytest
+
 from pyconnect.config import SinkConfig
 from pyconnect.core import Status
 
@@ -45,7 +46,7 @@ def connect_sink_factory(
     return connect_sink_factory_
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_message_consumption(produced_messages: List[Tuple[str, dict]], connect_sink_factory: ConnectSinkFactory):
     connect_sink = connect_sink_factory()
 
@@ -54,7 +55,7 @@ def test_message_consumption(produced_messages: List[Tuple[str, dict]], connect_
     compare_lists_unordered(produced_messages, connect_sink.flushed_messages)
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_offset_commit_on_restart(produced_messages: List[Tuple[str, dict]], connect_sink_factory: ConnectSinkFactory):
     def patch_commit(sink: PyConnectTestSink) -> mock.Mock:
         old_func = sink._consumer.commit
@@ -79,7 +80,7 @@ def test_offset_commit_on_restart(produced_messages: List[Tuple[str, dict]], con
     assert expected_call == commit_mock.call_args
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_continue_after_crash(produced_messages: List[Tuple[str, dict]], connect_sink_factory: ConnectSinkFactory):
     connect_sink = connect_sink_factory({"kafka_opts": {"max.poll.interval.ms": 10000, "session.timeout.ms": 6000}})
     connect_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 7)
@@ -98,7 +99,7 @@ def test_continue_after_crash(produced_messages: List[Tuple[str, dict]], connect
     compare_lists_unordered(produced_messages, flushed_messages)
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_two_sinks_one_failing(
     topic_and_partitions: Tuple[str, int], produced_messages: List[Tuple[str, dict]], connect_sink_factory
 ):

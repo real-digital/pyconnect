@@ -1,10 +1,11 @@
+from test.conftest import ConsumeAll, RecordList
 from time import sleep
-from typing import Callable, Iterable, Tuple, Dict
+from typing import Callable, Dict, Iterable, Tuple
 
 import pytest
 
 from pyconnect.config import SourceConfig
-from test.conftest import ConsumeAll, RecordList
+
 from .utils import PyConnectTestSource, compare_lists_unordered
 
 SourceFactory = Callable[..., PyConnectTestSource]
@@ -36,7 +37,7 @@ def source_factory(
     yield source_factory_
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_produce_messages(source_factory: SourceFactory, records: RecordList, consume_all: ConsumeAll):
     source = source_factory().with_records(records)
 
@@ -48,7 +49,7 @@ def test_produce_messages(source_factory: SourceFactory, records: RecordList, co
     compare_lists_unordered(consumed_records, records)
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_resume_producing(source_factory: SourceFactory, consume_all: ConsumeAll):
     first_records = [(1, 1), (2, 2), (3, 3)]
     first_source = source_factory().with_records(first_records)

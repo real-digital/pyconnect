@@ -3,57 +3,20 @@ GROUP := None
 SHELL = /bin/bash
 
 install-hooks:
-	. .venv/bin/activate && \
-	pip3 install -r flake8-requirements.txt && \
-	pip3 install gitpython==2.1.10 && \
-	ln -sf ../../commithooks/pre-commit .git/hooks/pre-commit && \
-	ln -sf ../../commithooks/prepare-commit-msg .git/hooks/prepare-commit-msg && \
-	chmod +x .git/hooks/pre-commit && \
-	chmod +x .git/hooks/prepare-commit-msg && \
-	git config --bool flake8.strict true
-
-install-system-packages:
-	sudo apt-get install docker docker-compose kafkacat virtualenv python3.6 -y
-
+	pre-commit install
+	
 install-virtualenv:
-	[[ -d .venv ]] || (export PIPENV_VENV_IN_PROJECT=1 && pipenv install --dev)
+	poetry install
 
-install-hosts:
-	[[ -n "`cat /etc/hosts | grep __start_pyconnect__`" ]] || \
-	(cat ./hosts.template | sudo tee -a /etc/hosts)
-
-uninstall-hosts:
-	sudo sed -i /__start_pyconnect__/,/__stop_pyconnect__/d /etc/hosts
-
-
-install-dev-env: install-system-packages install-virtualenv install-hosts install-hooks
-
-reset-cluster:
-	sudo docker-compose -f test/docker-compose.yml rm -f
-
-boot-cluster: reset-cluster
-	@( \
-	  (curl -s "http://rest-proxy:8082/topics" >/dev/null) && \
-	  (echo "Cluster already running.") \
-	) \
-	  || \
-	( \
-	  (echo "Starting Cluster") && \
-	  (sudo docker-compose -f test/docker-compose.yml up --force-recreate -d) && \
-	  (until (curl -s "http://rest-proxy:8082/topics" >/dev/null); do sleep 0.1s; done) \
-	)
-
-shutdown-cluster:
-	@( \
-	  (echo "Stopping Cluster") && \
-	  (sudo docker-compose -f test/docker-compose.yml down) \
-	)
+boot-cluster:
+	docker-compose up -d
+	scripts/wait-for-it.sh localhost:9092 -t 60 -- echo "Booted up"
 
 run-full-tests: boot-cluster
-	.venv/bin/python -m pytest --run-e2e --doctest-modules
+	poetry run pytest --integration --doctest-modules
 
 run-tests:
-	.venv/bin/python -m pytest --doctest-modules
+	poetry run pytest --doctest-modules
 
 consume-%: boot-cluster
 	kafkacat -b broker:9092 -t $*
@@ -72,4 +35,4 @@ publish-test:
 	twine upload dist/* --repository-url https://test.pypi.org/legacy/
 
 publish: publish-test
-	twine upload dist/*
+	poetry publish

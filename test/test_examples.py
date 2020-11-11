@@ -24,7 +24,7 @@ def tmp_with_pyconnect(tmpdir: pathlib.Path) -> Tuple[pathlib.Path, pathlib.Path
     return tmpdir, venv_bin
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_file_sink_example(
     running_cluster_config: Dict[str, str],
     topic_and_partitions: Tuple[str, int],
@@ -60,7 +60,7 @@ def test_file_sink_example(
     compare_lists_unordered(produced_messages, saved_messages)
 
 
-@pytest.mark.e2e
+@pytest.mark.integration
 def test_file_source_example(
     records: RecordList,
     running_cluster_config: Dict[str, str],

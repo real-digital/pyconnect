@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.6', '3.7', '3.8' ]
+        python: ['3.6', '3.7', '3.8', '3.9']
         librdkafka: ['1.1.0']
     steps:
       - uses: actions/checkout@v1
@@ -57,7 +57,7 @@ jobs:
           python-version: ${{ matrix.python }}
           architecture: x64
       - name: Download and compile librdkafka
-        if: matrix.python == '3.8' && steps.rdkafka-cache.outputs.cache-hit != 'true'
+        if: matrix.python == '3.9' && steps.rdkafka-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get install libsasl2-dev libsasl2-modules libssl-dev
           git clone --branch "v${{ matrix.librdkafka }}" --depth 1 https://github.com/edenhill/librdkafka.git
@@ -75,7 +75,7 @@ jobs:
         run: |
           pip3 install "poetry>=1.0.2"
           poetry config virtualenvs.in-project true
-      - name: Install project
+      - name: Install project requirements
         run: |
           poetry install -vvv
       - name: Run kafka stack
@@ -88,13 +88,13 @@ jobs:
       - name: Run integration tests
         run: |
           poetry run pytest -v --integration tests/
-#      - name: Update coverage
-#        if: matrix.python == '3.6'
-#        env:
-#          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
-#        run: |
-#          export BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-#          poetry run coveralls
+      - name: Update coverage
+        if: matrix.python == '3.8'
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+        run: |
+          export BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          poetry run coveralls
       - name: Output logs
         if: failure()
         run: |

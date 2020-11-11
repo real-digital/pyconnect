@@ -12,9 +12,10 @@ from confluent_kafka import avro as confluent_avro
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError, Message, NewTopic
+from pykafka import KafkaClient, Topic
+
 from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.core import Status
-from pykafka import KafkaClient, Topic
 
 logging.basicConfig(
     format="%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s",
@@ -25,7 +26,7 @@ logger = logging.getLogger("test.conftest")
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "e2e: mark test to run only during end to end tests")
+    config.addinivalue_line("markers", "integration: mark test to run only during end to end tests")
 
 
 def pytest_addoption(parser):
@@ -34,17 +35,17 @@ def pytest_addoption(parser):
 
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--integration"):
-        # --integration given in cli: do not skip e2e tests
+        # --integration given in cli: do not skip integration tests
         return
-    skip_e2e = pytest.mark.skip(reason="need --integration option to run")
+    skip_integration = pytest.mark.skip(reason="need --integration option to run")
     for item in items:
-        if "e2e" in item.keywords:
-            item.add_marker(skip_e2e)
+        if "integration" in item.keywords:
+            item.add_marker(skip_integration)
 
 
 @pytest.fixture()
-def confluent_config() -> Dict[str, str]:
-    return {"bootstrap.servers": "localhost:9092", "security.protocol": "PLAINTEXT"}
+def confluent_config(cluster_config: Dict[str, str]) -> Dict[str, str]:
+    return {"bootstrap.servers": cluster_config["broker"], "security.protocol": "PLAINTEXT"}
 
 
 @pytest.fixture(params=[Status.CRASHED, TestException()], ids=["Status_CRASHED", "TestException"])
@@ -148,8 +149,10 @@ RecordList = List[Record]
 
 
 @pytest.fixture
-def pykafka_client():
-    return pykafka.client.KafkaClient(hosts="localhost:9092", exclude_internal_topics=False, broker_version="1.0.0")
+def pykafka_client(cluster_config: Dict[str, str]):
+    return pykafka.client.KafkaClient(
+        hosts=cluster_config["broker"], exclude_internal_topics=False, broker_version="1.0.0"
+    )
 
 
 @pytest.fixture
