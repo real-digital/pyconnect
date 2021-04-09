@@ -45,7 +45,11 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture()
 def confluent_config(cluster_config: Dict[str, str]) -> Dict[str, str]:
-    return {"bootstrap.servers": cluster_config["broker"], "security.protocol": "PLAINTEXT"}
+    return {
+        "bootstrap.servers": cluster_config["broker"],
+        "security.protocol": "PLAINTEXT",
+        "topic.metadata.refresh.interval.ms": "250",
+    }
 
 
 @pytest.fixture(params=[Status.CRASHED, TestException()], ids=["Status_CRASHED", "TestException"])

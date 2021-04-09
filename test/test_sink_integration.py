@@ -20,7 +20,7 @@ def connect_sink_factory(
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSink`.
     If necessary, any config parameter can be overwritten by providing a custom config as argument to the factory.
     """
-    topic_id, partitions = topic_and_partitions
+    topic_id, _ = topic_and_partitions
     group_id = topic_id + "_sink_group_id"
     sink_config = SinkConfig(
         {

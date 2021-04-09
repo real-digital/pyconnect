@@ -27,6 +27,7 @@ def source_factory(
             offset_topic=f"{topic_id}_offsets",
             offset_commit_interval=5,
             topic=topic_id,
+            topic_metadata_refresh_interval_ms=250,
         )
     )
 
