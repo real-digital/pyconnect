@@ -2,9 +2,9 @@ from typing import Callable, cast
 from unittest import mock
 
 import pytest
-
 from pyconnect.config import SourceConfig
 from pyconnect.core import NoCrashInfo
+
 from .utils import PyConnectTestSource, TestException
 
 SourceFactory = Callable[..., PyConnectTestSource]
@@ -22,6 +22,7 @@ def source_factory(message_factory):
             schema_registry="testregistry",
             offset_commit_interval=5,
             topic="testtopic",
+            unify_logging=False,
         )
     )
 

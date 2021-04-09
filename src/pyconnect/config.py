@@ -10,17 +10,15 @@ import json
 import logging
 import os
 import re
+import sys
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Pattern, Type, Union
 
+import yaml
 from loguru import logger
 
-import sys
-import yaml
-
 from .core import PyConnectException
-
 
 SanityChecker = Callable[["BaseConfig"], None]
 SanityCheck = Union[str, SanityChecker]
@@ -520,7 +518,7 @@ class BaseConfig(dict):
         Loads a yaml file and uses it to create the config
         """
         with open(yaml_file, "r") as infile:
-            conf = yaml.load(infile)
+            conf = yaml.safe_load(infile)
         return cls(conf)
 
     @classmethod

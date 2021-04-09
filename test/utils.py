@@ -7,14 +7,12 @@ import logging
 import pathlib
 import random
 import string
-import subprocess
 from pprint import pformat
 from typing import Any, Dict, List, Optional, Tuple
 from unittest import mock
 
 import pytest
 from confluent_kafka.cimpl import Message
-
 from pyconnect.config import SourceConfig
 from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
@@ -270,19 +268,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         """
         Utility function that prints consumer group status to stdout
         """
-        group_status = subprocess.run(
-            [
-                CLI_DIR / "kafka-consumer-groups.sh",
-                "--bootstrap-server",
-                self.config["bootstrap_servers"][0],
-                "--describe",
-                "--group",
-                self.config["group_id"],
-                "--offsets",
-                "--verbose",
-            ],
-            stdout=subprocess.PIPE,
-        ).stdout.decode()
+        group_status = self._consumer.consumer_group_metadata()
         logger.info(f"Kafka consumer group status:\n{group_status}\n--- END group status ---")
 
     def on_startup(self) -> None:

@@ -1,0 +1,79 @@
+# Based on https://github.com/confluentinc/cp-docker-images/blob/master/examples/cp-all-in-one/docker-compose.yml
+
+version: '3'
+services:
+  zookeeper:
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
+    command: >
+      bash -c "/init.sh
+      && confluent-community/bin/zookeeper-server-start confluent-community/etc/kafka/zookeeper.properties"
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    environment:
+      CONFIG_PATH: 'confluent-community/etc/kafka/zookeeper.properties'
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
+    hostname: kafka
+    container_name: kafka
+    command: >
+      bash -c "/wait-for-it.sh zookeeper:2181 -t 60
+      && /init.sh
+      && confluent-community/bin/kafka-server-start confluent-community/etc/kafka/server.properties"
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 9093:9093
+    environment:
+      CONFIG_PATH: 'confluent-community/etc/kafka/server.properties'
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      # Tests expect auto create to be enabled
+#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'False'
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'LOCAL:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_LISTENERS: 'LOCAL://:9092,PLAINTEXT://kafka:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'LOCAL://localhost:9092,PLAINTEXT://kafka:9093'
+
+  schema-registry:
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
+    container_name: schema-registry
+    command: >
+      bash -c "/wait-for-it.sh kafka:9093 -t 60
+      && /init.sh
+      && confluent-community/bin/schema-registry-start confluent-community/etc/schema-registry/schema-registry.properties"
+    environment:
+      CONFIG_PATH: 'confluent-community/etc/schema-registry/schema-registry.properties'
+      SCHEMAREGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+      SCHEMAREGISTRY_HOST_NAME: schema-registry
+      SCHEMAREGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMAREGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9093
+    depends_on:
+      - kafka
+    ports:
+      - 8081:8081
+
+  rest-proxy:
+    image: confluentinc/cp-kafka-rest:latest
+    depends_on:
+      - zookeeper
+      - kafka
+      - schema-registry
+    ports:
+      - 8082:8082
+    hostname: rest-proxy
+    container_name: rest-proxy
+    environment:
+      KAFKA_REST_HOST_NAME: rest-proxy
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka:9092'
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+      KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
