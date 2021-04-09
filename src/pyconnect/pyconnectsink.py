@@ -10,8 +10,9 @@ from confluent_kafka.cimpl import KafkaError, KafkaException
 from loguru import logger
 
 from pyconnect.config import configure_logging
+
 from .config import SinkConfig
-from .core import BaseConnector, Status, message_repr, hide_sensitive_values
+from .core import BaseConnector, Status, hide_sensitive_values, message_repr
 
 
 class MessageType(Enum):

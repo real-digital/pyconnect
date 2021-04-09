@@ -7,6 +7,7 @@ from confluent_kafka.cimpl import KafkaError, TopicPartition
 from loguru import logger
 
 from pyconnect.config import configure_logging
+
 from .avroparser import to_key_schema, to_value_schema
 from .config import SourceConfig
 from .core import BaseConnector, PyConnectException, Status, hide_sensitive_values

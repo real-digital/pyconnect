@@ -66,7 +66,7 @@ def test_avro_schema_generation():
     # Sanity check - this should not throw
     loads(json.dumps(schema))
     generated = create_schema_from_record("all_field", data, namespace="ba.nanas")
-    assert schema == generated, f"Generated schema does not match!"
+    assert schema == generated, "Generated schema does not match!"
 
 
 def test_schema_generation_from_primitive():
@@ -82,4 +82,4 @@ def test_avro_schema_generation_optional():
     loads(json.dumps(schema_optional))
     generated = create_schema_from_record("all_field", data, namespace="ba.nanas", optional_primitives=True)
 
-    assert schema_optional == generated, f"Generated schema does not match!"
+    assert schema_optional == generated, "Generated schema does not match!"

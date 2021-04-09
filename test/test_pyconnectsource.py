@@ -2,6 +2,7 @@ from typing import Callable, cast
 from unittest import mock
 
 import pytest
+
 from pyconnect.config import SourceConfig
 from pyconnect.core import NoCrashInfo
 

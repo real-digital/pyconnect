@@ -13,6 +13,7 @@ from unittest import mock
 
 import pytest
 from confluent_kafka.cimpl import Message
+
 from pyconnect.config import SourceConfig
 from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
