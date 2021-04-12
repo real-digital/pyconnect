@@ -49,6 +49,7 @@ def confluent_config(cluster_config: Dict[str, str]) -> Dict[str, str]:
         "bootstrap.servers": cluster_config["broker"],
         "security.protocol": "PLAINTEXT",
         "topic.metadata.refresh.interval.ms": "250",
+        "api.version.request": False,
     }
 
 
