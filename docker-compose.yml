@@ -5,7 +5,7 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:6.1.1
     ports:
-      - 127.0.0.1:2181:2181
+      - 2181:2181
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -15,8 +15,8 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - 127.0.0.1:9093:9093
-      - 127.0.0.1:9092:9092
+      - 9093:9093
+      - 9092:9092
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -28,7 +28,7 @@ services:
       # they are still considered to have the same name.
       # We can do nothing about the former case but we can trick kafka with a custom protocol in the latter case.
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,OUTSIDE://127.0.0.1:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,OUTSIDE://localhost:9093
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
@@ -39,7 +39,7 @@ services:
       - zookeeper
       - kafka
     ports:
-      - 127.0.0.1:8081:8081
+      - 8081:8081
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
@@ -50,7 +50,7 @@ services:
       - kafka
       - schema-registry
     ports:
-      - 127.0.0.1:8082:8082
+      - 8082:8082
     environment:
       KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka:9092'
       KAFKA_REST_HOST_NAME: 'kafka-rest'
