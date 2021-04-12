@@ -49,7 +49,6 @@ def confluent_config(cluster_config: Dict[str, str]) -> Dict[str, str]:
         "bootstrap.servers": cluster_config["broker"],
         "security.protocol": "PLAINTEXT",
         "topic.metadata.refresh.interval.ms": "250",
-        "api.version.request": False,
     }
 
 
@@ -155,9 +154,7 @@ RecordList = List[Record]
 
 @pytest.fixture
 def pykafka_client(cluster_config: Dict[str, str]):
-    return pykafka.client.KafkaClient(
-        hosts=cluster_config["broker"], exclude_internal_topics=False, broker_version="1.0.0"
-    )
+    return pykafka.client.KafkaClient(hosts=cluster_config["broker"], exclude_internal_topics=False)
 
 
 @pytest.fixture
