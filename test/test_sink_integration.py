@@ -76,8 +76,8 @@ def test_offset_commit_on_restart(produced_messages: List[Tuple[str, dict]], con
     connect_sink.max_idle_count = 2
     connect_sink.run()
 
-    assert len(expected_call[1]["offsets"]) > 0, f"No offsets commited during commit! {expected_call}"
-    assert expected_call == commit_mock.call_args
+    assert expected_call.args == commit_mock.call_args.args
+    compare_lists_unordered(expected_call.kwargs["offsets"], commit_mock.call_args.kwargs["offsets"])
 
 
 @pytest.mark.integration
