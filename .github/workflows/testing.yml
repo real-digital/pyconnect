@@ -33,6 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         python: ['3.6', '3.7', '3.8', '3.9']
+        librdkafka: ['1.6.1']
     steps:
       - uses: actions/checkout@v1
       - name: Fetch virtualenv cache
@@ -41,11 +42,33 @@ jobs:
         with:
           path: .venv
           key: venv-${{ matrix.python }}-${{ hashFiles('poetry.lock') }}
+      - name: Fetch cache for librdkafka
+        if: matrix.python == '3.8'
+        uses: actions/cache@v1
+        id: rdkafka-cache
+        with:
+          path: librdkafka
+          key: librdkafka-${{ matrix.librdkafka }}
       - name: Setup python and install packages
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
+      - name: Download and compile librdkafka
+        if: matrix.python == '3.9' && steps.rdkafka-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install libsasl2-dev libsasl2-modules libssl-dev
+          git clone --branch "v${{ matrix.librdkafka }}" --depth 1 https://github.com/edenhill/librdkafka.git
+          pushd librdkafka
+          sudo ./configure --prefix /usr
+          sudo make
+          popd
+      - name: Install librdkafka
+        if: matrix.python == '3.8'
+        run: |
+          pushd librdkafka
+          sudo make install
+          popd
       - name: Install and configure poetry
         run: |
           pip3 install "poetry>=1.0.2"
