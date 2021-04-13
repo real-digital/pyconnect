@@ -2,8 +2,11 @@ from abc import ABCMeta, abstractmethod
 from time import sleep
 from typing import Any, Optional, Tuple
 
-from confluent_kafka.avro import AvroConsumer, AvroProducer
+from confluent_kafka import DeserializingConsumer
+from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import KafkaError, TopicPartition
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 from loguru import logger
 
 from pyconnect.config import configure_logging
@@ -47,20 +50,27 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         logger.info(f"AvroProducer created with config: {hidden_config}")
         return AvroProducer(config)
 
-    def _make_offset_consumer(self) -> AvroConsumer:
+    def _make_offset_consumer(self) -> DeserializingConsumer:
         """
         Creates the underlying instance of :class:`confluent_kafka.avro.AvroConsumer` which is used to fetch the last
         committed producer offsets.
         """
+        schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
+        key_deserializer = AvroDeserializer(schema_registry_client)
+        value_deserializer = AvroDeserializer(schema_registry_client)
+
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
-            "schema.registry.url": self.config["schema_registry"],
-            "enable.auto.commit": False,
+            "key.deserializer": key_deserializer,
+            "value.deserializer": value_deserializer,
+            "enable.auto.commit": True,
+            "allow.auto.create.topics": True,
             "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
         }
-        offset_consumer = AvroConsumer(config)
+
+        offset_consumer = DeserializingConsumer(config)
 
         return offset_consumer
 
@@ -86,6 +96,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         return None
 
     def _assign_consumer_to_last_offset(self):
+
         partition = TopicPartition(self.config["offset_topic"], 0)
         _, high_offset = self._offset_consumer.get_watermark_offsets(partition)
         partition.offset = max(0, high_offset - 1)
