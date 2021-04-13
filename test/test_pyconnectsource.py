@@ -27,7 +27,9 @@ def source_factory(message_factory):
         )
     )
 
-    with mock.patch("pyconnect.pyconnectsource.AvroProducer"), mock.patch("pyconnect.pyconnectsource.AvroConsumer"):
+    with mock.patch("pyconnect.pyconnectsource.AvroProducer"), mock.patch(
+        "pyconnect.pyconnectsource.DeserializingConsumer"
+    ):
 
         def source_factory_():
             source = PyConnectTestSource(config).with_committed_offset(0)
