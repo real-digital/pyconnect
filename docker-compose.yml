@@ -55,4 +55,4 @@ services:
       KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka:9092'
       KAFKA_REST_HOST_NAME: 'kafka-rest'
       KAFKA_REST_LISTENERS: "http://127.0.0.1:8082"
-      KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+      KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://127.0.0.1:8081'
