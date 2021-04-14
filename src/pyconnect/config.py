@@ -307,26 +307,22 @@ def configure_logging(use_stderr=False) -> None:
     :param use_stderr: Use stderr instead of stdout. Useful when cli commands are used in a pipe and need to provide
                        output in a certain format
     """
+    requested_level = os.getenv("LOGURU_LEVEL", "DEBUG")
+
+    requested_colorize = os.getenv("LOGURU_COLORIZE", "f")
+    colorize = requested_colorize.lower() not in ("0", "f", "n", "false", "no")
+
+    requested_serialize = os.getenv("LOGURU_SERIALIZE", "yes")
+    serialize = requested_serialize.lower() not in ("0", "f", "n", "false", "no")
     handlers: List[Dict] = [
         {
             "sink": sys.stderr if use_stderr else sys.stdout,
             "format": "{time} | {level} | {thread.name}:{name}:{function}:{line} | {message}",
-            "serialize": True,
+            "level": requested_level,
+            "serialize": serialize,
+            "colorize": colorize,
         }
     ]
-
-    requested_level = os.getenv("LOGURU_LEVEL")
-    if requested_level:
-        handlers[0]["level"] = requested_level
-    else:
-        handlers[0]["level"] = "DEBUG"
-
-    requested_colorize = os.getenv("LOGURU_COLORIZE")
-    if requested_colorize:
-        colorize = requested_colorize.lower() not in ("0", "f", "n", "false", "no")
-        handlers[0]["colorize"] = colorize
-    else:
-        handlers[0]["colorize"] = False
 
     logger.configure(handlers=handlers)
 

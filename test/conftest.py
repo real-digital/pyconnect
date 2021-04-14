@@ -1,8 +1,7 @@
 import itertools as it
-import logging
 import random
 from functools import partial
-from test.utils import TEST_DIR, TestException, rand_text
+from test.utils import TestException, rand_text
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
@@ -12,17 +11,14 @@ from confluent_kafka import avro as confluent_avro
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError, Message, NewTopic
+from loguru import logger
 from pykafka import KafkaClient, Topic
 
 from pyconnect.avroparser import to_key_schema, to_value_schema
+from pyconnect.config import configure_logging
 from pyconnect.core import Status
 
-logging.basicConfig(
-    format="%(asctime)s|%(threadName)s|%(levelname)s|%(name)s|%(message)s",
-    filename=str(TEST_DIR / "test.log"),
-    filemode="w",
-)
-logger = logging.getLogger("test.conftest")
+configure_logging()
 
 
 def pytest_configure(config):
@@ -260,6 +256,8 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
             "group.id": f"{topic_id}_consumer",
             "enable.partition.eof": False,
             "default.topic.config": {"auto.offset.reset": "earliest"},
+            "enable.auto.commit": False,
+            "allow.auto.create.topics": True,
         }
     )
     consumer.subscribe([topic_id])

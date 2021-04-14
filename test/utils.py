@@ -3,7 +3,6 @@ This module contains utility functions and classes for testing.
 """
 import difflib
 import functools
-import logging
 import pathlib
 import random
 import string
@@ -13,17 +12,17 @@ from unittest import mock
 
 import pytest
 from confluent_kafka.cimpl import Message
+from loguru import logger
 
-from pyconnect.config import SourceConfig
+from pyconnect.config import SourceConfig, configure_logging
 from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
 from pyconnect.pyconnectsource import PyConnectSource
 
 TEST_DIR: pathlib.Path = pathlib.Path(__file__).parent.absolute()
 ROOT_DIR: pathlib.Path = TEST_DIR.parent
-CLI_DIR: pathlib.Path = TEST_DIR / "kafka" / "bin"
 
-logger = logging.getLogger("test.utils")
+configure_logging()
 
 
 class TestException(Exception):

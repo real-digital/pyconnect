@@ -27,7 +27,8 @@ def source_factory(
             offset_topic=f"{topic_id}_offsets",
             offset_commit_interval=5,
             topic=topic_id,
-            kafka_opts={"allow.auto.create.topics": True},
+            kafka_opts={"allow.auto.create.topics": True, "debug": "topic,metadata"},
+            unify_logging=True,
         )
     )
 
