@@ -44,7 +44,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "schema.registry.url": self.config["schema_registry"],
-            **self.config["kafka_opts"],
+            **self.config.get("kafka_producer_opts", {}),
         }
         hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
         logger.info(f"AvroProducer created with config: {hidden_config}")
@@ -63,11 +63,10 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "key.deserializer": key_deserializer,
             "value.deserializer": value_deserializer,
-            "enable.auto.commit": True,
             "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
-            **self.config["kafka_opts"],
+            **self.config.get("kafka_consumer_opts", {}),
         }
 
         offset_consumer = DeserializingConsumer(config)

@@ -425,7 +425,8 @@ class BaseConfig(dict):
         "sink_commit_retry_count": int_from_string_parser,
         "hash_sensitive_values": bool_from_string_parser,
         "unify_logging": bool_from_string_parser,
-        "kafka_opts": json.loads,
+        "kafka_consumer_opts": json.loads,
+        "kafka_producer_opts": json.loads,
     }
 
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
@@ -436,7 +437,8 @@ class BaseConfig(dict):
         self["sink_commit_retry_count"] = conf_dict.pop("sink_commit_retry_count", "2")
         self["hash_sensitive_values"] = conf_dict.pop("hash_sensitive_values", "true")
         self["unify_logging"] = conf_dict.pop("unify_logging", "true")
-        self["kafka_opts"] = conf_dict.pop("kafka_opts", {})
+        self["kafka_consumer_opts"] = conf_dict.pop("kafka_consumer_opts", {})
+        self["kafka_producer_opts"] = conf_dict.pop("kafka_producer_opts", {})
 
         if len(conf_dict) != 0:
             raise TypeError(f"The following options are unused: {conf_dict!r}")

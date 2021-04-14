@@ -161,7 +161,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             # We need this to start at the last committed offset instead of the
             # latest when subscribing for the first time
             "default.topic.config": {"auto.offset.reset": "earliest"},
-            **self.config["kafka_opts"],
+            **self.config.get("kafka_consumer_opts", {}),
         }
         consumer = RichAvroConsumer(config)
         hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)

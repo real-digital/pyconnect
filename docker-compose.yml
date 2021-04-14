@@ -29,7 +29,7 @@ services:
       # We can do nothing about the former case but we can trick kafka with a custom protocol in the latter case.
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT'
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,OUTSIDE://127.0.0.1:9093
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
@@ -43,6 +43,7 @@ services:
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
+      SCHEMA_REGISTRY_LISTENERS: 'http://127.0.0.1:8081'
 
   kafka-rest:
     image: confluentinc/cp-kafka-rest:6.1.1
@@ -54,5 +55,5 @@ services:
     environment:
       KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka:9092'
       KAFKA_REST_HOST_NAME: 'kafka-rest'
-      KAFKA_REST_LISTENERS: "http://127.0.0.1:8082"
+      KAFKA_REST_LISTENERS: 'http://127.0.0.1:8082'
       KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'

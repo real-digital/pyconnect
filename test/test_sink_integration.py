@@ -30,7 +30,7 @@ def connect_sink_factory(
             "group_id": group_id,
             "poll_timeout": 2,
             "topics": topic_id,
-            "kafka_opts": {"allow.auto.create.topics": True, "enable.auto.commit": True},
+            "kafka_consumer_opts": {"allow.auto.create.topics": True},
             "unify_logging": True,
         }
     )
@@ -84,7 +84,9 @@ def test_offset_commit_on_restart(produced_messages: List[Tuple[str, dict]], con
 
 @pytest.mark.integration
 def test_continue_after_crash(produced_messages: List[Tuple[str, dict]], connect_sink_factory: ConnectSinkFactory):
-    connect_sink = connect_sink_factory({"kafka_opts": {"max.poll.interval.ms": 10000, "session.timeout.ms": 6000}})
+    connect_sink = connect_sink_factory(
+        {"kafka_consumer_opts": {"max.poll.interval.ms": 10000, "session.timeout.ms": 6000}}
+    )
     connect_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 7)
     connect_sink.with_mock_for("close")
 
