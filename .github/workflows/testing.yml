@@ -62,7 +62,7 @@ jobs:
           sleep 5
       - name: Run integration tests
         run: |
-          poetry run pytest -v --integration test/
+          poetry run pytest -s -v --integration test/
       - name: Update coverage
         if: matrix.python == '3.8'
         env:
