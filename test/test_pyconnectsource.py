@@ -29,7 +29,7 @@ def source_factory(message_factory):
 
     with mock.patch("pyconnect.pyconnectsource.AvroProducer"), mock.patch(
         "pyconnect.pyconnectsource.DeserializingConsumer"
-    ):
+    ), mock.patch("pyconnect.pyconnectsource.SchemaRegistryClient"):
 
         def source_factory_():
             source = PyConnectTestSource(config).with_committed_offset(0)

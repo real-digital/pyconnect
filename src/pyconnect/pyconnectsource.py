@@ -64,10 +64,10 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             "key.deserializer": key_deserializer,
             "value.deserializer": value_deserializer,
             "enable.auto.commit": True,
-            "allow.auto.create.topics": True,
             "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
+            **self.config["kafka_opts"],
         }
 
         offset_consumer = DeserializingConsumer(config)
