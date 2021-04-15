@@ -318,7 +318,7 @@ def configure_logging(use_stderr=False) -> None:
     handlers: List[Dict] = [
         {
             "sink": sys.stderr if use_stderr else sys.stdout,
-            "format": "{level:<8}|{time:DD_MM HH:mm:ss}|{thread.name:<5}:{name}:{function}:{line}| '{message}'",
+            "format": "{level:<8} | {time:DD_MM HH:mm:ss} | {thread.name:<5}:{name}:{function}:{line} | '{message}'",
             "level": requested_level,
             "serialize": serialize,
             "colorize": colorize,

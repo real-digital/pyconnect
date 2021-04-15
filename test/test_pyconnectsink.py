@@ -24,10 +24,12 @@ def sink_factory():
             poll_timeout=1,
             topics="",
             unify_logging=False,
-            kafka_consumer_opts={"allow.auto.create.topics": True},
+            kafka_opts={"allow.auto.create.topics": True},
         )
     )
-    with mock.patch("pyconnect.pyconnectsink.RichAvroConsumer", autospec=True):
+    with mock.patch("pyconnect.pyconnectsink.RichAvroConsumer", autospec=True), mock.patch(
+        "pyconnect.pyconnectsink.DeserializingConsumer"
+    ), mock.patch("pyconnect.pyconnectsink.SchemaRegistryClient"):
 
         def sink_factory_():
             sink = PyConnectTestSink(conf)
