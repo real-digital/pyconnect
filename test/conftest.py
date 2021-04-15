@@ -7,10 +7,12 @@ from unittest import mock
 
 import pykafka
 import pytest
+from confluent_kafka import DeserializingConsumer
 from confluent_kafka import avro as confluent_avro
 from confluent_kafka.admin import AdminClient
-from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.cimpl import KafkaError, Message, NewTopic
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 from loguru import logger
 from pykafka import KafkaClient, Topic
 
@@ -249,17 +251,21 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
     """
     topic_id, _ = topic_and_partitions
 
-    consumer = AvroConsumer(
-        {
-            "bootstrap.servers": running_cluster_config["broker"],
-            "schema.registry.url": running_cluster_config["schema-registry"],
-            "group.id": f"{topic_id}_consumer",
-            "enable.partition.eof": False,
-            "default.topic.config": {"auto.offset.reset": "earliest"},
-            "enable.auto.commit": False,
-            "allow.auto.create.topics": True,
-        }
-    )
+    schema_registry_client = SchemaRegistryClient({"url": running_cluster_config["schema-registry"]})
+    key_deserializer = AvroDeserializer(schema_registry_client)
+    value_deserializer = AvroDeserializer(schema_registry_client)
+
+    config = {
+        "bootstrap.servers": running_cluster_config["broker"],
+        "key.deserializer": key_deserializer,
+        "value.deserializer": value_deserializer,
+        "group.id": f"{topic_id}_consumer",
+        "enable.partition.eof": False,
+        "default.topic.config": {"auto.offset.reset": "earliest"},
+        "allow.auto.create.topics": True,
+    }
+
+    consumer = DeserializingConsumer(config)
     consumer.subscribe([topic_id])
     consumer.list_topics()
 

@@ -312,12 +312,13 @@ def configure_logging(use_stderr=False) -> None:
     requested_colorize = os.getenv("LOGURU_COLORIZE", "f")
     colorize = requested_colorize.lower() not in ("0", "f", "n", "false", "no")
 
+    print(f"Colorize is {colorize}")
     requested_serialize = os.getenv("LOGURU_SERIALIZE", "yes")
     serialize = requested_serialize.lower() not in ("0", "f", "n", "false", "no")
     handlers: List[Dict] = [
         {
             "sink": sys.stderr if use_stderr else sys.stdout,
-            "format": "{time} | {level} | {thread.name}:{name}:{function}:{line} | {message}",
+            "format": "{level:<8}|{time:DD_MM HH:mm:ss}|{thread.name:<5}:{name}:{function}:{line}| '{message}'",
             "level": requested_level,
             "serialize": serialize,
             "colorize": colorize,
@@ -425,8 +426,7 @@ class BaseConfig(dict):
         "sink_commit_retry_count": int_from_string_parser,
         "hash_sensitive_values": bool_from_string_parser,
         "unify_logging": bool_from_string_parser,
-        "kafka_consumer_opts": json.loads,
-        "kafka_producer_opts": json.loads,
+        "kafka_opts": json.loads,
     }
 
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
@@ -437,8 +437,7 @@ class BaseConfig(dict):
         self["sink_commit_retry_count"] = conf_dict.pop("sink_commit_retry_count", "2")
         self["hash_sensitive_values"] = conf_dict.pop("hash_sensitive_values", "true")
         self["unify_logging"] = conf_dict.pop("unify_logging", "true")
-        self["kafka_consumer_opts"] = conf_dict.pop("kafka_consumer_opts", {})
-        self["kafka_producer_opts"] = conf_dict.pop("kafka_producer_opts", {})
+        self["kafka_opts"] = conf_dict.pop("kafka_opts", {})
 
         if len(conf_dict) != 0:
             raise TypeError(f"The following options are unused: {conf_dict!r}")
@@ -594,8 +593,12 @@ class SourceConfig(BaseConfig):
             The kafka topic where this pyconnect source will safe its source offsets to.
     """
 
+    __parsers = {"kafka_consumer_opts": json.loads, "kafka_producer_opts": json.loads}
+
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
         self["topic"] = conf_dict.pop("topic")
         self["offset_topic"] = conf_dict.pop("offset_topic")
+        self["kafka_consumer_opts"] = conf_dict.pop("kafka_consumer_opts", {})
+        self["kafka_producer_opts"] = conf_dict.pop("kafka_producer_opts", {})
 
         super().__init__(conf_dict)

@@ -4,9 +4,10 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
-from confluent_kafka import Message, TopicPartition
-from confluent_kafka.avro import AvroConsumer
+from confluent_kafka import DeserializingConsumer, Message, TopicPartition
 from confluent_kafka.cimpl import KafkaError, KafkaException
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 from loguru import logger
 
 from pyconnect.config import configure_logging
@@ -67,7 +68,7 @@ def msg_to_topic_partition(msg: Message) -> TopicPartition:
     return TopicPartition(msg.topic(), msg.partition(), msg.offset())
 
 
-class RichAvroConsumer(AvroConsumer):
+class RichAvroConsumer(DeserializingConsumer):
     """
     Kafka Consumer client which does avro schema decoding of messages.
     Handles message deserialization.
@@ -78,9 +79,8 @@ class RichAvroConsumer(AvroConsumer):
                         and the standard Kafka client configuration (``bootstrap.servers`` et.al).
     """
 
-    def __init__(self, config, schema_registry=None):
-
-        super().__init__(config, schema_registry=schema_registry)
+    def __init__(self, config):
+        super().__init__(config)
         self._current_key_schema_id = None
         self._current_value_schema_id = None
 
@@ -97,35 +97,40 @@ class RichAvroConsumer(AvroConsumer):
     def current_value_schema_id(self) -> int:
         return self._current_value_schema_id
 
-    def poll(self, timeout=None):
+        # def poll(self, timeout=None):
+        #     """
+        #     :param float timeout: Poll timeout in seconds (default: indefinite)
+        #     :returns: message object with deserialized key and value as dict objects
+        #     :rtype: Message
+        #     """
+        #     if timeout is None:
+        #         timeout = -1
+        #
+        #     logger.debug("poll_before super")
+        #     message = super(DeserializingConsumer, self).poll(timeout)
+        #     logger.debug(f"After super with message {message}")
+        #     if message is None:
+        #         return None
+        #     if not message.value() and not message.key():
+        #         return message
+        #     if not message.error():
+        #         if message.value() is not None:
+        #             self._current_value_schema_id = self.extract_schema_id(message.value())
+        #             decoded_value = self._serializer.decode_message(message.value())
+        #             message.set_value(decoded_value)
+        #         if message.key() is not None:
+        #             self._current_key_schema_id = self.extract_schema_id(message.key())
+        #             decoded_key = self._serializer.decode_message(message.key())
+        #             message.set_key(decoded_key)
+
+        # return message
+
+    def consume(self, num_messages=1, timeout=-1):
         """
-        This is an overriden method from confluent_kafka.Consumer class. This handles message
-        deserialization using avro schema
-
-        :param float timeout: Poll timeout in seconds (default: indefinite)
-        :returns: message object with deserialized key and value as dict objects
-        :rtype: Message
+        :py:func:`Consumer.consume` not implemented, use
+        :py:func:`DeserializingConsumer.poll` instead
         """
-        if timeout is None:
-            timeout = -1
-
-        # Call grandparent's poll method to skip AvroConsumer's message conversion
-        message = super(AvroConsumer, self).poll(timeout)
-        if message is None:
-            return None
-        if not message.value() and not message.key():
-            return message
-        if not message.error():
-            if message.value() is not None:
-                self._current_value_schema_id = self.extract_schema_id(message.value())
-                decoded_value = self._serializer.decode_message(message.value())
-                message.set_value(decoded_value)
-            if message.key() is not None:
-                self._current_key_schema_id = self.extract_schema_id(message.key())
-                decoded_key = self._serializer.decode_message(message.key())
-                message.set_key(decoded_key)
-
-        return message
+        raise NotImplementedError
 
 
 class PyConnectSink(BaseConnector, metaclass=ABCMeta):
@@ -140,7 +145,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
 
-        if self.config["unify_logging"]:
+        if self.config.pop("unify_logging", False):
             configure_logging()
         self.current_message: Optional[Message] = None
         self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
@@ -148,21 +153,21 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         self._consumer: RichAvroConsumer = self._make_consumer()
 
     def _make_consumer(self) -> RichAvroConsumer:
-        hash_sensitive_values = self.config["hash_sensitive_values"]
+        schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
+        key_deserializer = AvroDeserializer(schema_registry_client)
+        value_deserializer = AvroDeserializer(schema_registry_client)
+
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
-            "group.id": self.config["group_id"],
-            "schema.registry.url": self.config["schema_registry"],
-            # We need to commit offsets manually once we're sure it got saved
-            # to the sink
-            "enable.auto.commit": False,
-            # We want to keep track of EOFs
+            "key.deserializer": key_deserializer,
+            "value.deserializer": value_deserializer,
             "enable.partition.eof": True,
-            # We need this to start at the last committed offset instead of the
-            # latest when subscribing for the first time
-            "default.topic.config": {"auto.offset.reset": "earliest"},
-            **self.config.get("kafka_consumer_opts", {}),
+            "group.id": self.config["group_id"],
+            "default.topic.config": {"auto.offset.reset": "latest"},
+            **self.config["kafka_opts"],
         }
+
+        hash_sensitive_values = self.config["hash_sensitive_values"]
         consumer = RichAvroConsumer(config)
         hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
         logger.info(f"AvroConsumer created with config: {hidden_config}")

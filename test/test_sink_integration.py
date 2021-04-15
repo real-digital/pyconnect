@@ -30,7 +30,7 @@ def connect_sink_factory(
             "group_id": group_id,
             "poll_timeout": 2,
             "topics": topic_id,
-            "kafka_consumer_opts": {"allow.auto.create.topics": True},
+            "kafka_opts": {"allow.auto.create.topics": True},
             "unify_logging": True,
         }
     )

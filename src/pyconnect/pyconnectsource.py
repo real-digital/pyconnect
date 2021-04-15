@@ -44,6 +44,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "schema.registry.url": self.config["schema_registry"],
+            **self.config.get("kafka_opts", {}),
             **self.config.get("kafka_producer_opts", {}),
         }
         hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
@@ -66,6 +67,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
+            **self.config.get("kafka_opts", {}),
             **self.config.get("kafka_consumer_opts", {}),
         }
 
@@ -95,9 +97,16 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         return None
 
     def _assign_consumer_to_last_offset(self):
-
-        partition = TopicPartition(self.config["offset_topic"], 0)
-        _, high_offset = self._offset_consumer.get_watermark_offsets(partition)
+        off_topic = self.config["offset_topic"]
+        partition = TopicPartition(off_topic, 0)
+        try:
+            _, high_offset = self._offset_consumer.get_watermark_offsets(partition, timeout=10)
+        except KafkaError:
+            metadata = self._offset_consumer.list_topics(off_topic, timeout=10)
+            if metadata.topics[off_topic].error is not None:
+                raise PyConnectException(f"Offset topic {off_topic} could not be created")
+            logger.debug(metadata.topics[off_topic])
+            high_offset = 0
         partition.offset = max(0, high_offset - 1)
         self._offset_consumer.assign([partition])
 
