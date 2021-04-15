@@ -78,3 +78,4 @@ jobs:
         run: |
           docker-compose logs kafka
           docker-compose logs zookeeper
+          docker-compose logs schema-registry
