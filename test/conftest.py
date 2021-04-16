@@ -119,6 +119,7 @@ def topic_and_partitions(
     :return: Topic and number of partitions within it.
     """
     topic_id = rand_text(5)
+
     partitions = request.param
 
     confluent_admin_client.create_topics([NewTopic(topic_id, num_partitions=partitions, replication_factor=1)])

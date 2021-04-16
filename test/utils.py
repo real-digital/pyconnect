@@ -243,7 +243,7 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
 
 class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
     """
-    Implementation of a PyConnectSink that buffers incoming messges into a list
+    Implementation of a PyConnectSink that buffers incoming messages into a list
     :attr:`test.utils.PyConnectTestSink.message_buffer` and appends them into another
     one :attr:`test.utils.PyConnectTestSink.flushed_messages` on flush.
     Flush happens after every :attr:`test.utils.PyConnectTestSink.flush_interval` messages (defaults to 5).
@@ -272,8 +272,8 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         logger.info(f"Kafka consumer group status:\n{group_status}\n--- END group status ---")
 
     def on_startup(self) -> None:
-        super().on_startup()
         logger.info("######## CONSUMER STARTUP #########")
+        super().on_startup()
         logger.info(f"Config: {self.config!r}")
         self._check_status()
 

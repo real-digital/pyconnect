@@ -27,7 +27,7 @@ def source_factory(message_factory):
         )
     )
 
-    with mock.patch("pyconnect.pyconnectsource.AvroProducer"), mock.patch(
+    with mock.patch("pyconnect.pyconnectsource.SerializingProducer"), mock.patch(
         "pyconnect.pyconnectsource.DeserializingConsumer"
     ), mock.patch("pyconnect.pyconnectsource.SchemaRegistryClient"):
 

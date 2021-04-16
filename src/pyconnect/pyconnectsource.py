@@ -2,11 +2,10 @@ from abc import ABCMeta, abstractmethod
 from time import sleep
 from typing import Any, Optional, Tuple
 
-from confluent_kafka import DeserializingConsumer
-from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import KafkaError, TopicPartition
+from confluent_kafka import DeserializingConsumer, SerializingProducer
+from confluent_kafka.cimpl import KafkaError, KafkaException, TopicPartition
 from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.schema_registry.avro import AvroSerializer
 from loguru import logger
 
 from pyconnect.config import configure_logging
@@ -29,41 +28,42 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         self.config = config
         if self.config["unify_logging"]:
             configure_logging()
-        self._producer = self._make_producer()
-        self._offset_consumer = self._make_offset_consumer()
+        self.schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
         self._key_schema: Optional[str] = None
         self._value_schema: Optional[str] = None
         self._offset_schema: Optional[str] = None
+        self._producer = self._make_producer()
+        self._offset_consumer = self._make_offset_consumer()
 
-    def _make_producer(self) -> AvroProducer:
+    def _make_producer(self) -> SerializingProducer:
         """
         Creates the underlying instance of :class:`confluent_kafka.avro.AvroProducer` which is used to publish
         messages and producer offsets.
         """
         hash_sensitive_values = self.config["hash_sensitive_values"]
-        config = {
+
+        producer_config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
-            "schema.registry.url": self.config["schema_registry"],
+            "key.serializer": None,
+            "value.serializer": None,
             **self.config.get("kafka_opts", {}),
             **self.config.get("kafka_producer_opts", {}),
         }
-        hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
-        logger.info(f"AvroProducer created with config: {hidden_config}")
-        return AvroProducer(config)
+
+        hidden_config = hide_sensitive_values(producer_config, hash_sensitive_values=hash_sensitive_values)
+        logger.info(f"SerializingProducer created with config: {hidden_config}")
+        return SerializingProducer(hidden_config)
 
     def _make_offset_consumer(self) -> DeserializingConsumer:
         """
         Creates the underlying instance of :class:`confluent_kafka.avro.AvroConsumer` which is used to fetch the last
         committed producer offsets.
         """
-        schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
-        key_deserializer = AvroDeserializer(schema_registry_client)
-        value_deserializer = AvroDeserializer(schema_registry_client)
 
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
-            "key.deserializer": key_deserializer,
-            "value.deserializer": value_deserializer,
+            "key.deserializer": None,
+            "value.deserializer": None,
             "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
@@ -101,11 +101,14 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         partition = TopicPartition(off_topic, 0)
         try:
             _, high_offset = self._offset_consumer.get_watermark_offsets(partition, timeout=10)
-        except KafkaError:
+        except KafkaException as e:
+            logger.debug(f"Exception type {type(e)} {e}")
             metadata = self._offset_consumer.list_topics(off_topic, timeout=10)
+            logger.debug(f"Metadata from client {metadata.topics[off_topic].error}")
             if metadata.topics[off_topic].error is not None:
-                raise PyConnectException(f"Offset topic {off_topic} could not be created")
-            logger.debug(metadata.topics[off_topic])
+                raise PyConnectException(
+                    f"Offset topic {off_topic} could not be created. {metadata.topics[off_topic].error}"
+                )
             high_offset = 0
         partition.offset = max(0, high_offset - 1)
         self._offset_consumer.assign([partition])
@@ -147,7 +150,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def _produce(self, key: Any, value: Any) -> None:
+    def _produce(self, key: Any, value: Any, topic=None) -> None:
         """
         Publishes the message given by `key` and `value`.
 
@@ -156,13 +159,10 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         """
         self._create_schemas_if_necessary(key, value)
 
-        self._producer.produce(
-            key=key,
-            value=value,
-            key_schema=self._key_schema,
-            value_schema=self._value_schema,
-            topic=self.config["topic"],
-        )
+        if topic is None:
+            topic = self.config["topic"]
+
+        self._producer.produce(key=key, value=value, topic=topic)
 
     def _create_schemas_if_necessary(self, key, value) -> None:
         """
@@ -170,10 +170,20 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         :param key: Key record to infer schema from.
         :param value: Value record to infer schema from.
         """
+
         if self._key_schema is None:
-            self._key_schema = to_key_schema(key)
+            self._key_schema = str(to_key_schema(key))
+            avro_key_serializer = AvroSerializer(
+                schema_registry_client=self.schema_registry_client, schema_str=self._key_schema
+            )
+            self._producer._key_serializer = avro_key_serializer
+
         if self._value_schema is None:
             self._value_schema = to_value_schema(value)
+            avro_value_serializer = AvroSerializer(
+                schema_registry_client=self.schema_registry_client, schema_str=self._value_schema
+            )
+            self._producer._value_serializer = avro_value_serializer
 
     def _on_eof(self) -> None:
         self._safe_call_and_set_status(self.on_eof)
@@ -200,13 +210,11 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         instance.
         """
         idx = self.get_index()
-        if self._offset_schema is None:
-            self._offset_schema = to_value_schema(idx)
-
-        self._producer.produce(
-            topic=self.config["offset_topic"], key=None, value=idx, value_schema=self._offset_schema
-        )
+        old_serializer = self._producer._value_serializer
+        self._value_schema = None
+        self._produce(key=None, value=idx, topic=self.config["offset_topic"])
         self._producer.flush()
+        self._producer._value_serializer = old_serializer
 
     @abstractmethod
     def get_index(self) -> Any:
