@@ -3,7 +3,9 @@ from time import sleep
 from typing import Any, Optional, Tuple
 
 from confluent_kafka import DeserializingConsumer, SerializingProducer
-from confluent_kafka.cimpl import KafkaError, KafkaException, TopicPartition
+from confluent_kafka.admin import AdminClient
+from confluent_kafka.cimpl import KafkaError, KafkaException, NewTopic, TopicPartition
+from confluent_kafka.error import ConsumeError
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroSerializer
 from loguru import logger
@@ -32,8 +34,12 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         self._key_schema: Optional[str] = None
         self._value_schema: Optional[str] = None
         self._offset_schema: Optional[str] = None
+        self._admin = self._make_admin()
         self._producer = self._make_producer()
         self._offset_consumer = self._make_offset_consumer()
+
+    def _make_admin(self) -> AdminClient:
+        return AdminClient({"bootstrap.servers": ",".join(self.config["bootstrap_servers"])})
 
     def _make_producer(self) -> SerializingProducer:
         """
@@ -87,13 +93,15 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         """
         self._assign_consumer_to_last_offset()
 
-        offset_msg = self._offset_consumer.poll(timeout=60)
-        if offset_msg is None:
-            raise PyConnectException("Offset could not be fetched")
-        if offset_msg.error() is None:
-            return offset_msg.value()
-        if offset_msg.error().code() != KafkaError._PARTITION_EOF:
-            raise PyConnectException(f"Kafka library returned error: {offset_msg.err().name()}")
+        try:
+            offset_msg = self._offset_consumer.poll(timeout=60)
+            if offset_msg is None:
+                raise PyConnectException("Offset could not be fetched")
+            if offset_msg.error() is None:
+                return offset_msg.value()
+        except ConsumeError as ce:
+            if ce.code != KafkaError._PARTITION_EOF:
+                raise PyConnectException(f"Kafka library returned error: {ce.name}")
         return None
 
     def _assign_consumer_to_last_offset(self):
@@ -101,14 +109,9 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         partition = TopicPartition(off_topic, 0)
         try:
             _, high_offset = self._offset_consumer.get_watermark_offsets(partition, timeout=10)
-        except KafkaException as e:
-            logger.debug(f"Exception type {type(e)} {e}")
-            metadata = self._offset_consumer.list_topics(off_topic, timeout=10)
-            logger.debug(f"Metadata from client {metadata.topics[off_topic].error}")
-            if metadata.topics[off_topic].error is not None:
-                raise PyConnectException(
-                    f"Offset topic {off_topic} could not be created. {metadata.topics[off_topic].error}"
-                )
+        except KafkaException:
+            logger.warning(f"Offset topic {off_topic} was not found")
+            self._admin.create_topics([NewTopic(off_topic, num_partitions=1, replication_factor=1)])
             high_offset = 0
         partition.offset = max(0, high_offset - 1)
         self._offset_consumer.assign([partition])

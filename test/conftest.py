@@ -11,6 +11,7 @@ from confluent_kafka import DeserializingConsumer
 from confluent_kafka import avro as confluent_avro
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import KafkaError, Message, NewTopic
+from confluent_kafka.error import ConsumeError
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from loguru import logger
@@ -160,7 +161,6 @@ def pykafka_client(cluster_config: Dict[str, str]):
 def produced_messages(
     records: RecordList,
     plain_avro_producer,
-    confluent_admin_client: AdminClient,
     pykafka_client: KafkaClient,
     topic_and_partitions: Tuple[str, int],
     running_cluster_config: Dict[str, str],
@@ -273,14 +273,17 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
     def consume_all_() -> RecordList:
         records = []
         while True:
-            msg = consumer.poll(timeout=10)
-            if msg is None:
+            try:
+                msg = consumer.poll(timeout=10)
+                if msg is None:
+                    break
+                records.append((msg.key(), msg.value()))
+            except ConsumeError as ce:
+                assert ce.code == KafkaError._PARTITION_EOF
                 break
-            if msg.error() is not None:
-                assert msg.error().code() == KafkaError._PARTITION_EOF
-                break
-            records.append((msg.key(), msg.value()))
+
         return records
 
     yield consume_all_
+
     consumer.close()
