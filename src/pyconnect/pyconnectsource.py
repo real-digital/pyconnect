@@ -7,7 +7,7 @@ from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import KafkaError, KafkaException, NewTopic, TopicPartition
 from confluent_kafka.error import ConsumeError
 from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer
+from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from loguru import logger
 
 from pyconnect.config import configure_logging
@@ -66,10 +66,13 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         committed producer offsets.
         """
 
+        key_deserializer = AvroDeserializer(self.schema_registry_client)
+        value_deserializer = AvroDeserializer(self.schema_registry_client)
+
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
-            "key.deserializer": None,
-            "value.deserializer": None,
+            "key.deserializer": key_deserializer,
+            "value.deserializer": value_deserializer,
             "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
@@ -165,7 +168,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         if topic is None:
             topic = self.config["topic"]
 
-        self._producer.produce(key=key, value=value, topic=topic)
+        self._producer.produce(topic=topic, key=key, value=value)
 
     def _create_schemas_if_necessary(self, key, value) -> None:
         """

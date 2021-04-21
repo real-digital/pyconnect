@@ -140,7 +140,7 @@ def plain_avro_producer(
 
     key, value = records[0]
 
-    schema_registry_client = SchemaRegistryClient({"url": running_cluster_config["schema_registry"]})
+    schema_registry_client = SchemaRegistryClient({"url": running_cluster_config["schema-registry"]})
     key_schema = to_key_schema(key)
     avro_key_serializer = AvroSerializer(schema_registry_client=schema_registry_client, schema_str=key_schema)
     value_schema = to_value_schema(value)
@@ -262,12 +262,11 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
     schema_registry_client = SchemaRegistryClient({"url": running_cluster_config["schema-registry"]})
     key_deserializer = AvroDeserializer(schema_registry_client)
     value_deserializer = AvroDeserializer(schema_registry_client)
-
     config = {
         "bootstrap.servers": running_cluster_config["broker"],
+        "group.id": f"{topic_id}_consumer",
         "key.deserializer": key_deserializer,
         "value.deserializer": value_deserializer,
-        "group.id": f"{topic_id}_consumer",
         "enable.partition.eof": False,
         "default.topic.config": {"auto.offset.reset": "earliest"},
         "allow.auto.create.topics": True,
@@ -281,7 +280,7 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
         records = []
         while True:
             try:
-                msg = consumer.poll(timeout=10)
+                msg = consumer.poll(timeout=100)
                 if msg is None:
                     break
                 records.append((msg.key(), msg.value()))
