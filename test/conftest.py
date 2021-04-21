@@ -7,13 +7,12 @@ from unittest import mock
 
 import pykafka
 import pytest
-from confluent_kafka import DeserializingConsumer
-from confluent_kafka import avro as confluent_avro
+from confluent_kafka import DeserializingConsumer, SerializingProducer
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import KafkaError, Message, NewTopic
 from confluent_kafka.error import ConsumeError
 from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from loguru import logger
 from pykafka import KafkaClient, Topic
 
@@ -132,17 +131,29 @@ def topic_and_partitions(
 
 @pytest.fixture
 def plain_avro_producer(
-    running_cluster_config: Dict[str, str], topic_and_partitions: Tuple[str, int]
-) -> confluent_avro.AvroProducer:
+    running_cluster_config: Dict[str, str], topic_and_partitions: Tuple[str, int], records
+) -> SerializingProducer:
     """
     Creates a plain `confluent_kafka.avro.AvroProducer` that can be used to publish messages.
     """
-    topic_id, partitions = topic_and_partitions
+    topic_id, _ = topic_and_partitions
+
+    key, value = records[0]
+
+    schema_registry_client = SchemaRegistryClient({"url": running_cluster_config["schema_registry"]})
+    key_schema = to_key_schema(key)
+    avro_key_serializer = AvroSerializer(schema_registry_client=schema_registry_client, schema_str=key_schema)
+    value_schema = to_value_schema(value)
+    avro_value_serializer = AvroSerializer(schema_registry_client=schema_registry_client, schema_str=value_schema)
+
     producer_config = {
         "bootstrap.servers": running_cluster_config["broker"],
-        "schema.registry.url": running_cluster_config["schema-registry"],
+        "key.serializer": avro_key_serializer,
+        "value.serializer": avro_value_serializer,
     }
-    producer = confluent_avro.AvroProducer(producer_config)
+
+    producer = SerializingProducer(producer_config)
+
     producer.produce = partial(producer.produce, topic=topic_id)
 
     return producer
@@ -171,12 +182,8 @@ def produced_messages(
     """
     topic_id, partitions = topic_and_partitions
 
-    key, value = records[0]
-    key_schema = to_key_schema(key)
-    value_schema = to_value_schema(value)
-
     for key, value in records:
-        plain_avro_producer.produce(key=key, value=value, key_schema=key_schema, value_schema=value_schema)
+        plain_avro_producer.produce(key=key, value=value)
 
     plain_avro_producer.flush()
 

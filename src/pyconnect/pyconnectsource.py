@@ -175,7 +175,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         """
 
         if self._key_schema is None:
-            self._key_schema = str(to_key_schema(key))
+            self._key_schema = to_key_schema(key)
             avro_key_serializer = AvroSerializer(
                 schema_registry_client=self.schema_registry_client, schema_str=self._key_schema
             )
