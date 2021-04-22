@@ -73,9 +73,15 @@ jobs:
         run: |
           export BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           poetry run coveralls
-      - name: Output logs
+      - name: Output kafka logs
         if: failure()
         run: |
           docker-compose logs kafka
+      - name: Output zookeeper logs
+        if: failure()
+        run: |
           docker-compose logs zookeeper
+      - name: Output schema registry logs
+        if: failure()
+        run: |
           docker-compose logs schema-registry
