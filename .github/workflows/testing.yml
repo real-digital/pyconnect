@@ -61,12 +61,15 @@ jobs:
           ./scripts/wait-for-it.sh localhost:8081 -t 60
           ./scripts/wait-for-it.sh localhost:8082 -t 60
           sleep 5
+      - name: Test schema registry availability
+        uses: wei/curl@master
+          with:
+            args: --silent -X GET http://127.0.0.1:8081/subjects
       - name: Run integration tests
         env:
           LOGURU_COLORIZE: yes
           LOGURU_SERIALIZE: no
         run: |
-          curl --silent -X GET http://127.0.0.1:8081/subjects
           poetry run pytest -v --integration test/
       - name: Update coverage
         if: matrix.python == '3.8'
