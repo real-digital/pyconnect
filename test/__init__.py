@@ -1,4 +1,4 @@
-from confluent_kafka.schema_registry import avro
+from confluent_kafka.schema_registry import Schema, avro
 
 
 def _schema_loads(schema_str):
@@ -11,7 +11,6 @@ def _schema_loads(schema_str):
     Returns:
         Schema: Schema instance
     """
-    from confluent_kafka.schema_registry import Schema
 
     schema_str = schema_str.strip()  # canonical form primitive declarations are not supported
     if schema_str[0] != "{":

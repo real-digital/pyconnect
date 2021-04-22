@@ -30,7 +30,11 @@ def connect_sink_factory(
             "group_id": group_id,
             "poll_timeout": 10.0,
             "topics": topic_id,
-            "kafka_opts": {"allow.auto.create.topics": True, "auto.offset.reset": "earliest"},
+            "kafka_opts": {
+                "allow.auto.create.topics": True,
+                "auto.offset.reset": "earliest",
+                "default.topic.config": {"auto.offset.reset": "earliest"},
+            },
             "unify_logging": True,
         }
     )
