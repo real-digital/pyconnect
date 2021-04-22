@@ -66,6 +66,7 @@ jobs:
           LOGURU_COLORIZE: yes
           LOGURU_SERIALIZE: no
         run: |
+          curl --silent -X GET http://127.0.0.1:8081/subjects
           poetry run pytest -v --integration test/
       - name: Update coverage
         if: matrix.python == '3.8'
