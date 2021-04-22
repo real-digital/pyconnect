@@ -133,9 +133,10 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
             "key.deserializer": key_deserializer,
             "value.deserializer": value_deserializer,
+            "enable.auto.commit": False,
             "enable.partition.eof": True,
             "group.id": self.config["group_id"],
-            "default.topic.config": {"auto.offset.reset": "latest"},
+            "default.topic.config": {"auto.offset.reset": "earliest"},
             **self.config["kafka_opts"],
         }
 

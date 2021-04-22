@@ -49,6 +49,6 @@ services:
       - schema-registry
     environment:
       KAFKA_REST_BOOTSTRAP_SERVERS: 'localhost:9092'
-      KAFKA_REST_HOST_NAME: 'kafka-rest'
+      KAFKA_REST_HOST_NAME: 'localhost'
       KAFKA_REST_LISTENERS: 'http://localhost:8082'
       KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://localhost:8081'
