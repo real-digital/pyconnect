@@ -286,10 +286,11 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         self.message_buffer.clear()
 
     def on_shutdown(self) -> None:
-        super().on_shutdown()
+        new_status = super().on_shutdown()
         logger.info("######## CONSUMER SHUTDOWN #########")
         self._check_status()
         logger.debug(f"Flushing messages:\n{pformat(self.message_buffer, indent=2)}")
+        return new_status
 
     def on_no_message_received(self) -> Optional[Status]:
         if self.has_partition_assignments and self.all_partitions_at_eof:

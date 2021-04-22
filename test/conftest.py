@@ -268,7 +268,7 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
         "key.deserializer": key_deserializer,
         "value.deserializer": value_deserializer,
         "enable.partition.eof": False,
-        "default.topic.config": {"auto.offset.reset": "latest"},
+        "default.topic.config": {"auto.offset.reset": "earliest"},
         "allow.auto.create.topics": True,
     }
 
