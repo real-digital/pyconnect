@@ -4,7 +4,7 @@ SHELL = /bin/bash
 
 install-hooks:
 	pre-commit install
-	
+
 install-virtualenv:
 	poetry install
 
@@ -23,11 +23,6 @@ consume-%: boot-cluster
 
 list-topics: boot-cluster
 	kafkacat -b broker:9092 -L
-
-check-offsets: boot-cluster
-	test/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --offsets --verbose
-	test/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --state --verbose
-	test/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group $(GROUP) --members --verbose
 
 publish-test:
 	rm -rf dist

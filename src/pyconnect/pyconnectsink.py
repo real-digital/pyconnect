@@ -360,10 +360,13 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
                 try:
                     logger.info(f"Committing offsets: {offsets}")
                     self._consumer.commit(offsets=offsets, asynchronous=False)
+                    logger.debug("After committing offset")
                     break
+                except ConsumeError as ce:
+                    logger.debug(f"Consume error {ce}")
                 except KafkaException as ke:
                     logger.warning(
-                        f"Kafka exception occurred while comitting offsets (attempt {attempt_count}): {str(ke)}"
+                        f"Kafka exception occurred while committing offsets (attempt {attempt_count}): {str(ke)}"
                     )
                     if attempt_count == max_attempts:
                         raise
