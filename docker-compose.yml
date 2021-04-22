@@ -3,23 +3,25 @@
 version: '3'
 services:
   zookeeper:
+    network_mode: "host"
     image: confluentinc/cp-zookeeper:6.1.1
-    ports:
-      - 2181:2181
+    # ports:
+    #   - 2181:2181
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
+    network_mode: "host"
     image: confluentinc/cp-kafka:6.1.1
     depends_on:
       - zookeeper
-    ports:
-      - 9093:9093
-      - 9092:9092
+    # ports:
+    #   - 9093:9093
+    #   - 9092:9092
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ZOOKEEPER_CONNECT: 'localhost:2181'
 
       # We need zookeeper to advertise two different urls since the broker has to be reachable
       # from two different environments (once from inside the docker network and once from the host)
@@ -28,32 +30,34 @@ services:
       # they are still considered to have the same name.
       # We can do nothing about the former case but we can trick kafka with a custom protocol in the latter case.
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,OUTSIDE://localhost:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,OUTSIDE://localhost:9093
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
   schema-registry:
+    network_mode: "host"
     image: confluentinc/cp-schema-registry:6.1.1
     depends_on:
       - zookeeper
       - kafka
-    ports:
-      - 8081:8081
+    # ports:
+    #   - 8081:8081
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
-      SCHEMA_REGISTRY_LISTENERS: 'http://schema-registry:8081,http://localhost:8081'
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'localhost:2181'
+      SCHEMA_REGISTRY_LISTENERS: 'http://localhost:8081'
 
   kafka-rest:
+    network_mode: "host"
     image: confluentinc/cp-kafka-rest:6.1.1
     depends_on:
       - kafka
       - schema-registry
-    ports:
-      - 8082:8082
+    # ports:
+    #   - 8082:8082
     environment:
-      KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka:9092'
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'localhost:9092'
       KAFKA_REST_HOST_NAME: 'kafka-rest'
       KAFKA_REST_LISTENERS: 'http://localhost:8082'
       KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://localhost:8081'
