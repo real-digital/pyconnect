@@ -145,7 +145,7 @@ class BaseConnector(metaclass=ABCMeta):
         """
         if not self._status == Status.NOT_YET_RUNNING:
             raise PyConnectException(
-                "Can not re-start a failed/stopped connector, " "need to re-create a Connect instance"
+                "Can not re-start a failed/stopped connector, need to re-create a Connect instance"
             )
 
         self._status = Status.RUNNING

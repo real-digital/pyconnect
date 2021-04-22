@@ -1,11 +1,11 @@
 import struct
-import warnings
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import DeserializingConsumer, Message, TopicPartition
 from confluent_kafka.cimpl import KafkaError, KafkaException
+from confluent_kafka.error import ConsumeError
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from loguru import logger
@@ -97,33 +97,19 @@ class RichAvroConsumer(DeserializingConsumer):
     def current_value_schema_id(self) -> int:
         return self._current_value_schema_id
 
-        # def poll(self, timeout=None):
-        #     """
-        #     :param float timeout: Poll timeout in seconds (default: indefinite)
-        #     :returns: message object with deserialized key and value as dict objects
-        #     :rtype: Message
-        #     """
-        #     if timeout is None:
-        #         timeout = -1
-        #
-        #     logger.debug("poll_before super")
-        #     message = super(DeserializingConsumer, self).poll(timeout)
-        #     logger.debug(f"After super with message {message}")
-        #     if message is None:
-        #         return None
-        #     if not message.value() and not message.key():
-        #         return message
-        #     if not message.error():
-        #         if message.value() is not None:
-        #             self._current_value_schema_id = self.extract_schema_id(message.value())
-        #             decoded_value = self._serializer.decode_message(message.value())
-        #             message.set_value(decoded_value)
-        #         if message.key() is not None:
-        #             self._current_key_schema_id = self.extract_schema_id(message.key())
-        #             decoded_key = self._serializer.decode_message(message.key())
-        #             message.set_key(decoded_key)
-
-        # return message
+    def poll(self, timeout=None):
+        """
+        :param float timeout: Poll timeout in seconds (default: indefinite)
+        :returns: message object with deserialized key and value as dict objects
+        :rtype: Message
+        """
+        if timeout is None:
+            timeout = -1
+        try:
+            message = super(DeserializingConsumer, self).poll(timeout)
+        except ConsumeError as ce:
+            message = ce.kafka_message
+        return message
 
     def consume(self, num_messages=1, timeout=-1):
         """
@@ -215,14 +201,6 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     @property
     def has_partition_assignments(self):
         return len(self._consumer.assignment()) > 0
-
-    @property
-    def last_message(self):
-        # TODO: when bumping to next major release, remove this property
-        warnings.warn(
-            "'last_message' will be permanently renamed to 'current_message' in next major release", DeprecationWarning
-        )
-        return self.current_message
 
     def _run_once(self) -> None:
         try:

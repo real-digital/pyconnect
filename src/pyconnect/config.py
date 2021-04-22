@@ -167,7 +167,7 @@ def _checkstr_to_checker(sanity_check: str) -> SanityChecker:
     """
 
     def checker(all_fields: BaseConfig) -> None:
-        logger.debug(f"Validting fields using {sanity_check!r}")
+        logger.debug(f"Validating fields using {sanity_check!r}")
         checker_expression = sanity_check.format(
             **{
                 key: repr(value.total_seconds()) if isinstance(value, dt.timedelta) else repr(value)
@@ -181,9 +181,7 @@ def _checkstr_to_checker(sanity_check: str) -> SanityChecker:
 
         success = eval(checker_expression)
         if not success:
-            raise SanityError(
-                f"Sanity check {sanity_check!r} failed! " f"Formatted expression: {checker_expression!r}"
-            )
+            raise SanityError(f"Sanity check {sanity_check!r} failed! \n Formatted expression: {checker_expression!r}")
         logger.debug("Check successful")
 
     return checker
@@ -312,7 +310,6 @@ def configure_logging(use_stderr=False) -> None:
     requested_colorize = os.getenv("LOGURU_COLORIZE", "f")
     colorize = requested_colorize.lower() not in ("0", "f", "n", "false", "no")
 
-    print(f"Colorize is {colorize}")
     requested_serialize = os.getenv("LOGURU_SERIALIZE", "yes")
     serialize = requested_serialize.lower() not in ("0", "f", "n", "false", "no")
     handlers: List[Dict] = [

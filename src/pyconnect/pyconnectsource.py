@@ -100,8 +100,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             offset_msg = self._offset_consumer.poll(timeout=60)
             if offset_msg is None:
                 raise PyConnectException("Offset could not be fetched")
-            if offset_msg.error() is None:
-                return offset_msg.value()
+            return offset_msg.value()
         except ConsumeError as ce:
             if ce.code != KafkaError._PARTITION_EOF:
                 raise PyConnectException(f"Kafka library returned error: {ce.name}")

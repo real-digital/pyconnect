@@ -269,28 +269,27 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         Utility function that prints consumer group status to stdout
         """
         group_status = self._consumer.consumer_group_metadata()
-        logger.info(f"Kafka consumer group status:\n{group_status}\n--- END group status ---")
+        logger.info(f"Kafka consumer group status: \n{group_status}\n--- END group status ---")
 
     def on_startup(self) -> None:
         logger.info("######## CONSUMER STARTUP #########")
         super().on_startup()
-        logger.info(f"Config: {self.config!r}")
+        logger.info(f"Config:\n{pformat(self.config, indent=2)}")
         self._check_status()
 
     def need_flush(self) -> bool:
         return len(self.message_buffer) == self.flush_interval
 
     def on_flush(self) -> None:
-        logger.debug("Flushing messages:\n" + pformat(self.message_buffer, indent=2))
+        logger.debug(f"Flushing messages:\n{pformat(self.message_buffer, indent=2)}")
         self.flushed_messages.extend(self.message_buffer)
         self.message_buffer.clear()
 
     def on_shutdown(self) -> None:
-        new_status = super().on_shutdown()
+        super().on_shutdown()
         logger.info("######## CONSUMER SHUTDOWN #########")
         self._check_status()
-        logger.info("Flushed messages:\n" + pformat(self.flushed_messages, indent=2))
-        return new_status
+        logger.debug(f"Flushing messages:\n{pformat(self.message_buffer, indent=2)}")
 
     def on_no_message_received(self) -> Optional[Status]:
         if self.has_partition_assignments and self.all_partitions_at_eof:
