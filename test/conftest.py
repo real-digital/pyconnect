@@ -71,9 +71,9 @@ def cluster_config() -> Dict[str, str]:
 
     hosts = {
         "broker": "localhost:9093",
-        "schema-registry": "http://localhostt:8081",
-        "rest-proxy": "http://localhostt:8082",
-        "zookeeper": "localhostt:2181",
+        "schema-registry": "http://localhost:8081",
+        "rest-proxy": "http://localhost:8082",
+        "zookeeper": "localhost:2181",
     }
 
     return hosts
@@ -268,7 +268,7 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
         "key.deserializer": key_deserializer,
         "value.deserializer": value_deserializer,
         "enable.partition.eof": False,
-        "default.topic.config": {"auto.offset.reset": "earliest"},
+        "default.topic.config": {"auto.offset.reset": "latest"},
         "allow.auto.create.topics": True,
     }
 
