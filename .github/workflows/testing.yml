@@ -64,7 +64,7 @@ jobs:
       - name: Test schema registry availability
         uses: wei/curl@master
         with:
-          args: --silent -X GET http://127.0.0.1:8081/subjects
+          args: --silent -X GET http://localhost:8081/subjects
       - name: Run integration tests
         env:
           LOGURU_COLORIZE: yes
