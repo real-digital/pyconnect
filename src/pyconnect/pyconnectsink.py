@@ -97,20 +97,6 @@ class RichAvroConsumer(DeserializingConsumer):
     def current_value_schema_id(self) -> int:
         return self._current_value_schema_id
 
-    def poll(self, timeout=None):
-        """
-        :param float timeout: Poll timeout in seconds (default: indefinite)
-        :returns: message object with deserialized key and value as dict objects
-        :rtype: Message
-        """
-        if timeout is None:
-            timeout = -1
-        try:
-            message = super(DeserializingConsumer, self).poll(timeout)
-        except ConsumeError as ce:
-            message = ce.kafka_message
-        return message
-
     def consume(self, num_messages=1, timeout=-1):
         """
         :py:func:`Consumer.consume` not implemented, use
@@ -206,7 +192,11 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         try:
             self.current_message = None
             self._status_info = None
-            msg = self._consumer.poll(self.config["poll_timeout"])
+            try:
+                msg = self._consumer.poll(self.config["poll_timeout"])
+            except ConsumeError as ce:
+                msg = ce.kafka_message
+
             self.current_message = msg
             self._flush_if_needed()
             self._call_right_handler_for_message(msg)
