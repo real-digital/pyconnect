@@ -70,10 +70,10 @@ def cluster_config() -> Dict[str, str]:
     """
 
     hosts = {
-        "broker": "127.0.0.1:9093",
-        "schema-registry": "http://127.0.0.1:8081",
-        "rest-proxy": "http://127.0.0.1:8082",
-        "zookeeper": "127.0.0.1:2181",
+        "broker": "localhost:9093",
+        "schema-registry": "http://localhostt:8081",
+        "rest-proxy": "http://localhostt:8082",
+        "zookeeper": "localhostt:2181",
     }
 
     return hosts
