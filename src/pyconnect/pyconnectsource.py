@@ -29,7 +29,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
     def __init__(self, config: SourceConfig) -> None:
         super().__init__()
         self.config = config
-        self.config["bootstrap.servers"] = ",".join(self.config.pop("bootstrap_servers"))
+        self.config["bootstrap.servers"] = ",".join(self.config["bootstrap_servers"])
         if self.config.pop("unify_logging", False):
             configure_logging()
         self.schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
