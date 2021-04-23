@@ -61,12 +61,24 @@ jobs:
           ./scripts/wait-for-it.sh localhost:8081 -t 60
           ./scripts/wait-for-it.sh localhost:8082 -t 60
           sleep 5
-      - name: Run integration tests
+      - name: Run unit tests
         env:
           LOGURU_COLORIZE: yes
           LOGURU_SERIALIZE: no
         run: |
-          poetry run pytest -v --integration test/
+          poetry run pytest -v test/
+      - name: Run integration tests for source
+        env:
+          LOGURU_COLORIZE: yes
+          LOGURU_SERIALIZE: no
+        run: |
+          poetry run pytest -v --integration test/test_source_integration.py
+      - name: Run integration tests for sink
+        env:
+          LOGURU_COLORIZE: yes
+          LOGURU_SERIALIZE: no
+        run: |
+          poetry run pytest -v --integration test/test_sink_integration.py
       - name: Update coverage
         if: matrix.python == '3.8'
         env:
