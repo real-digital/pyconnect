@@ -277,6 +277,7 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
     consumer.subscribe([topic_id])
     sleep(5)
     consumer.list_topics()
+    sleep(5)
 
     def consume_all_() -> RecordList:
         records = []
