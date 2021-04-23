@@ -1,4 +1,3 @@
-import struct
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from pprint import pformat
@@ -69,33 +68,6 @@ def msg_to_topic_partition(msg: Message) -> TopicPartition:
     return TopicPartition(msg.topic(), msg.partition(), msg.offset())
 
 
-class RichAvroConsumer(DeserializingConsumer):
-    """
-    Kafka Consumer client which does avro schema decoding of messages.
-    Handles message deserialization.
-
-    Constructor takes below parameters
-
-    :param dict config: Config parameters containing url for schema registry (``schema.registry.url``)
-                        and the standard Kafka client configuration (``bootstrap.servers`` et.al).
-    """
-
-    def __init__(self, config):
-        super().__init__(config)
-
-    @staticmethod
-    def extract_schema_id(message: bytes) -> int:
-        _, schema_id = struct.unpack(">bI", message[:5])
-        return schema_id
-
-    def consume(self, num_messages=1, timeout=-1):
-        """
-        :py:func:`Consumer.consume` not implemented, use
-        :py:func:`DeserializingConsumer.poll` instead
-        """
-        raise NotImplementedError
-
-
 class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     """
     This class offers base functionality for all sink connectors. All sink connectors have to inherit from this class
@@ -113,9 +85,9 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         self.current_message: Optional[Message] = None
         self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
         self.__eof_reached: Dict[Tuple[str, int], bool] = {}
-        self._consumer: RichAvroConsumer = self._make_consumer()
+        self._consumer: DeserializingConsumer = self._make_consumer()
 
-    def _make_consumer(self) -> RichAvroConsumer:
+    def _make_consumer(self) -> DeserializingConsumer:
         schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
         key_deserializer = AvroDeserializer(schema_registry_client)
         value_deserializer = AvroDeserializer(schema_registry_client)
@@ -132,7 +104,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         }
 
         hash_sensitive_values = self.config["hash_sensitive_values"]
-        consumer = RichAvroConsumer(config)
+        consumer = DeserializingConsumer(config)
         hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
         logger.info(f"AvroConsumer created with config: {pformat(hidden_config, indent=2)}")
         # noinspection PyArgumentList
