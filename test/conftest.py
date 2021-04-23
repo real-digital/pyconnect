@@ -124,10 +124,10 @@ def topic_and_partitions(
     partitions = request.param
 
     results: Dict[str, Future] = confluent_admin_client.create_topics(
-        [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)], operation_timeout=30
+        [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)], operation_timeout=45
     )
     for future in results.values():
-        future.result(timeout=30)
+        future.result(timeout=60)
 
     yield topic_id, partitions
 
