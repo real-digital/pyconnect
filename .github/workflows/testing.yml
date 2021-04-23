@@ -85,6 +85,7 @@ jobs:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
         run: |
           export BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          pip install coveralls
           poetry run coveralls
       - name: Output kafka logs
         if: failure()
