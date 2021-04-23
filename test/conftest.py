@@ -2,6 +2,7 @@ import itertools as it
 import random
 from functools import partial
 from test.utils import TestException, rand_text
+from time import sleep
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
@@ -274,6 +275,7 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
 
     consumer = DeserializingConsumer(config)
     consumer.subscribe([topic_id])
+    sleep(5)
     consumer.list_topics()
 
     def consume_all_() -> RecordList:
