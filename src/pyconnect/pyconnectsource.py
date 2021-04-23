@@ -29,7 +29,8 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
     def __init__(self, config: SourceConfig) -> None:
         super().__init__()
         self.config = config
-        if self.config["unify_logging"]:
+        self.config["bootstrap.servers"] = ",".join(self.config.pop("bootstrap_servers"))
+        if self.config.pop("unify_logging", False):
             configure_logging()
         self.schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
         self._key_schema: Optional[str] = None
@@ -40,7 +41,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         self._offset_consumer = self._make_offset_consumer()
 
     def _make_admin(self) -> AdminClient:
-        return AdminClient({"bootstrap.servers": ",".join(self.config["bootstrap_servers"])})
+        return AdminClient({"bootstrap.servers": self.config["bootstrap.servers"]})
 
     def _make_producer(self) -> SerializingProducer:
         """
@@ -50,7 +51,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         hash_sensitive_values = self.config["hash_sensitive_values"]
 
         producer_config = {
-            "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
+            "bootstrap.servers": self.config["bootstrap.servers"],
             "key.serializer": None,
             "value.serializer": None,
             **self.config.get("kafka_opts", {}),
@@ -71,7 +72,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         value_deserializer = AvroDeserializer(self.schema_registry_client)
 
         config = {
-            "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
+            "bootstrap.servers": self.config["bootstrap.servers"],
             "key.deserializer": key_deserializer,
             "value.deserializer": value_deserializer,
             "enable.partition.eof": True,
