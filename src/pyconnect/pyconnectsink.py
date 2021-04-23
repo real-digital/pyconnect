@@ -82,21 +82,11 @@ class RichAvroConsumer(DeserializingConsumer):
 
     def __init__(self, config):
         super().__init__(config)
-        self._current_key_schema_id = None
-        self._current_value_schema_id = None
 
     @staticmethod
     def extract_schema_id(message: bytes) -> int:
         _, schema_id = struct.unpack(">bI", message[:5])
         return schema_id
-
-    @property
-    def current_key_schema_id(self) -> int:
-        return self._current_key_schema_id
-
-    @property
-    def current_value_schema_id(self) -> int:
-        return self._current_value_schema_id
 
     def consume(self, num_messages=1, timeout=-1):
         """
