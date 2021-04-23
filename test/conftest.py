@@ -1,8 +1,8 @@
 import itertools as it
 import random
+from concurrent.futures import Future
 from functools import partial
 from test.utils import TestException, rand_text
-from time import sleep
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
@@ -123,7 +123,11 @@ def topic_and_partitions(
 
     partitions = request.param
 
-    confluent_admin_client.create_topics([NewTopic(topic_id, num_partitions=partitions, replication_factor=1)])
+    results: Dict[str, Future] = confluent_admin_client.create_topics(
+        [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)], operation_timeout=30
+    )
+    for future in results.values():
+        future.result(timeout=30)
 
     yield topic_id, partitions
 
@@ -271,13 +275,12 @@ def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: D
         "enable.partition.eof": False,
         "default.topic.config": {"auto.offset.reset": "earliest"},
         "allow.auto.create.topics": True,
+        "debug": "consumer",
     }
 
     consumer = DeserializingConsumer(config)
     consumer.subscribe([topic_id])
-    sleep(5)
     consumer.list_topics()
-    sleep(5)
 
     def consume_all_() -> RecordList:
         records = []
