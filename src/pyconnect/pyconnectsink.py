@@ -1,6 +1,7 @@
 import struct
 from abc import ABCMeta, abstractmethod
 from enum import Enum
+from pprint import pformat
 from typing import Dict, List, Optional, Tuple
 
 from confluent_kafka import DeserializingConsumer, Message, TopicPartition
@@ -143,7 +144,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         hash_sensitive_values = self.config["hash_sensitive_values"]
         consumer = RichAvroConsumer(config)
         hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
-        logger.info(f"AvroConsumer created with config: {hidden_config}")
+        logger.info(f"AvroConsumer created with config: {pformat(hidden_config, indent=2)}")
         # noinspection PyArgumentList
         consumer.subscribe(self.config["topics"], on_assign=self._on_assign, on_revoke=self._on_revoke)
         return consumer
@@ -360,10 +361,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
                 try:
                     logger.info(f"Committing offsets: {offsets}")
                     self._consumer.commit(offsets=offsets, asynchronous=False)
-                    logger.debug("After committing offset")
                     break
-                except ConsumeError as ce:
-                    logger.debug(f"Consume error {ce}")
                 except KafkaException as ke:
                     logger.warning(
                         f"Kafka exception occurred while committing offsets (attempt {attempt_count}): {str(ke)}"

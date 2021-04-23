@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from pprint import pformat
 from time import sleep
 from typing import Any, Optional, Tuple
 
@@ -57,7 +58,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         }
 
         hidden_config = hide_sensitive_values(producer_config, hash_sensitive_values=hash_sensitive_values)
-        logger.info(f"SerializingProducer created with config: {hidden_config}")
+        logger.info(f"SerializingProducer created with config: {pformat(hidden_config, indent=2)}")
         return SerializingProducer(hidden_config)
 
     def _make_offset_consumer(self) -> DeserializingConsumer:
@@ -82,6 +83,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
 
         offset_consumer = DeserializingConsumer(config)
 
+        logger.info(f"Offset Consumer created with config: {pformat(config, indent=2)}")
         return offset_consumer
 
     def _before_run_loop(self) -> None:
