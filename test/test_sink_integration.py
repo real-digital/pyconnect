@@ -123,13 +123,22 @@ def test_two_sinks_one_failing(
 
         return wrapper
 
+    def on_shutdown_patched(func: Callable) -> Callable:
+        def wrapper(*args, **kwargs):
+            b.abort()
+            return func(*args, **kwargs)
+
+        return wrapper
+
     failing_sink = connect_sink_factory(conf)
     failing_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 3)
     failing_sink.on_message_received = on_message_received_patched(failing_sink.on_message_received)
+    failing_sink.on_shutdown = on_shutdown_patched(failing_sink.on_shutdown)
     failing_sink.with_wrapper_for("on_message_received")
 
     running_sink = connect_sink_factory(conf)
     running_sink.on_message_received = on_message_received_patched(running_sink.on_message_received)
+    running_sink.on_shutdown = on_shutdown_patched(running_sink.on_shutdown)
     running_sink.with_wrapper_for("on_message_received")
     running_sink.max_idle_count = 5
 
