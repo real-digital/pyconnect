@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.6', '3.7', '3.8', '3.9']
+        python: ['3.9']
     steps:
       - uses: actions/checkout@v1
       - name: Fetch virtualenv cache
@@ -80,7 +80,7 @@ jobs:
         run: |
           poetry run pytest -v --integration test/test_sink_integration.py
       - name: Update coverage
-        if: matrix.python == '3.8'
+        if: matrix.python == '3.9'
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
         run: |
