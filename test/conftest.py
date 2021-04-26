@@ -1,8 +1,12 @@
 import itertools as it
 import random
+import socket
+import struct
 from concurrent.futures import Future
+from contextlib import closing
 from functools import partial
 from test.utils import TestException, rand_text
+from time import sleep
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
@@ -70,27 +74,56 @@ def cluster_config() -> Dict[str, str]:
     :return: A map from service to url.
     """
 
-    hosts = {
-        "broker": "localhost:9092",
-        "schema-registry": "http://localhost:8081",
-        "rest-proxy": "http://localhost:8082",
-        "zookeeper": "localhost:2181",
-    }
+    hosts = {"broker": "localhost:9092", "schema-registry": "http://localhost:8081", "zookeeper": "localhost:2181"}
 
     return hosts
+
+
+CORR_ID: bytes = struct.pack(">i", 1337)
+KAFKA_GENERIC_API_VERSION_REQUEST = (
+    b"\x00\x00\x00\x16"  # message size
+    b"\x00\x12"  # api_key 18 = api_versin request
+    b"\x00\x00" + CORR_ID + b"\x00\x0c"  # api_version 0  # correlation ID  # length of client_id
+    b"probe_client"  # client_id
+)
 
 
 @pytest.fixture(scope="session")
 def assert_cluster_running(cluster_config: Dict[str, str]) -> None:
     """
-    Makes sure the kafka cluster is running by checking whether the rest-proxy service returns the topics
+    Makes sure the kafka cluster is running by checking whether we can issue an api_versions request
     """
-    from urllib.request import urlopen
+    for _ in range(12):
+        try:
+            api_version_response = _send_api_version_request(cluster_config)
+            assert api_version_response[:4] == CORR_ID
+        except OSError as e:
+            logger.info(f"Error while sending api version request: {e}")
+        except AssertionError:
+            logger.info(f"Broker returned wrong correlation id: {api_version_response[:4]}")
+        else:
+            break
+        logger.info("Retrying in 10s")
+        sleep(10)
+    else:
+        raise TimeoutError("Timed out waiting for Kafka.")
+    logger.info("Kafka broker is ready.")
 
-    url = cluster_config["rest-proxy"] + "/topics"
 
-    with urlopen(url) as resp:
-        assert resp.code == 200, "Kafka Cluster is not running!"
+def _send_api_version_request(cluster_config: Dict[str, str]) -> bytes:
+    with closing(socket.socket(type=socket.SOCK_STREAM)) as sock:
+        addr, port = cluster_config["broker"].split(":")
+        sock.connect((addr, int(port)))
+        sock.sendall(KAFKA_GENERIC_API_VERSION_REQUEST)
+        expected_bytes = struct.unpack(">i", sock.recv(4))[0]
+        received_bytes = 0
+        data = []
+        while received_bytes < expected_bytes:
+            data.append(sock.recv(1024))
+            received_bytes += len(data[-1])
+        sock.shutdown(socket.SHUT_RDWR)
+
+    return b"".join(data)
 
 
 @pytest.fixture(scope="session")
