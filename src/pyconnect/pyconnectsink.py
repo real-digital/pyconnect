@@ -159,7 +159,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
             try:
                 msg = self._consumer.poll(self.config["poll_timeout"])
             except ConsumeError as ce:
-                logger.debug(f"Error: {ce.kafka_message}")
+                logger.debug(f"ConsumeError while polling: {ce.kafka_message}")
                 msg = ce.kafka_message
 
             self.current_message = msg
