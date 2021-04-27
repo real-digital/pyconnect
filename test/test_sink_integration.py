@@ -35,6 +35,8 @@ def connect_sink_factory(
             "kafka_opts": {
                 "allow.auto.create.topics": True,
                 "auto.offset.reset": "earliest",
+                "group.initial.rebalance.delay.ms": 100,
+                "max.poll.records": 1,
                 "default.topic.config": {"auto.offset.reset": "earliest"},
             },
             "unify_logging": True,
@@ -123,7 +125,7 @@ def use_barrier(barrier: threading.Barrier, sink: PyConnectTestSink, callback_na
                         barrier.abort()
                 except TimeoutError:
                     logger.info("Barrier still blocked, call consume(0) to allow for rebalancing.")
-                    sink._consumer.consume(0)
+                    sink._consumer.poll(0)
                 except threading.BrokenBarrierError:
                     # Can only happen when the barrier is passed, because that's the only time when "abort" is called.
                     logger.info("Got BrokenBarrierError, that's fine.")
