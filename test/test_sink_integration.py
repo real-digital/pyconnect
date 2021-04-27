@@ -154,7 +154,7 @@ def use_sleep(sink: PyConnectTestSink, callback_name: str) -> Callable:
     def wrapper(*args, **kwargs):
         nonlocal sleeps_remaining
         if sleeps_remaining > 0:
-            time.sleep(5)
+            time.sleep(3)
             sleeps_remaining -= 1
         return callback(*args, **kwargs)
 
