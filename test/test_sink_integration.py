@@ -109,7 +109,7 @@ def test_two_sinks_one_failing(
     conf = {"offset_commit_interval": 2}
 
     failing_sink = connect_sink_factory(conf)
-    failing_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 2)
+    failing_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 3)
     failing_sink.with_wrapper_for("on_message_received")
 
     running_sink = connect_sink_factory(conf)
@@ -127,7 +127,7 @@ def test_two_sinks_one_failing(
 
     assert running_sink.on_message_received.called, "Running sink should have received messages"
     assert failing_sink.on_message_received.called, "Failing sink should have received messages"
-    assert len(failing_sink.flushed_messages) == 1, "Only messages before crash should be flushed"
+    assert len(failing_sink.flushed_messages) == 2, "Only messages before crash should be flushed"
     assert failing_sink.status == Status.CRASHED
     assert isinstance(failing_sink.status_info, TestException)
     assert running_sink.status == Status.STOPPED
