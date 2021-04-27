@@ -113,6 +113,7 @@ def assert_cluster_running(cluster_config: Dict[str, str]) -> None:
 def _send_api_version_request(cluster_config: Dict[str, str]) -> bytes:
     with closing(socket.socket(type=socket.SOCK_STREAM)) as sock:
         addr, port = cluster_config["broker"].split(":")
+        sock.settimeout(120)
         sock.connect((addr, int(port)))
         sock.sendall(KAFKA_GENERIC_API_VERSION_REQUEST)
         expected_bytes = struct.unpack(">i", sock.recv(4))[0]
