@@ -36,7 +36,6 @@ def connect_sink_factory(
                 "allow.auto.create.topics": True,
                 "auto.offset.reset": "earliest",
                 "group.initial.rebalance.delay.ms": 100,
-                "max.poll.records": 1,
                 "default.topic.config": {"auto.offset.reset": "earliest"},
             },
             "unify_logging": True,
