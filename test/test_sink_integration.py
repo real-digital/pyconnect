@@ -107,6 +107,34 @@ def test_continue_after_crash(produced_messages: List[Tuple[str, dict]], connect
     compare_lists_unordered(produced_messages, flushed_messages)
 
 
+def use_barrier(barrier: threading.Barrier, sink: PyConnectTestSink, callback_name: str) -> Callable:
+    callback = getattr(sink, callback_name)
+
+    @functools.wraps(callback)
+    def wrapper(*args, **kwargs):
+        if not barrier.broken:
+            for _ in range(12):
+                try:
+                    logger.info("Waiting for barrier.")
+                    i = barrier.wait(timeout=10)
+                    logger.info("Barrier reached.")
+                    if i == 0:
+                        logger.info("Deactivating barrier.")
+                        barrier.abort()
+                except TimeoutError:
+                    logger.info("Barrier still blocked, call consume(0) to allow for rebalancing.")
+                    sink._consumer.consume(0)
+                except threading.BrokenBarrierError:
+                    # Can only happen when the barrier is passed, because that's the only time when "abort" is called.
+                    logger.info("Got BrokenBarrierError, that's fine.")
+                break
+            else:
+                raise TimeoutError("Timeout waiting for barrier")
+        return callback(*args, **kwargs)
+
+    return wrapper
+
+
 @pytest.mark.integration
 def test_two_sinks_one_failing(
     topic_and_partitions: Tuple[str, int], produced_messages: List[Tuple[str, dict]], connect_sink_factory
@@ -118,23 +146,13 @@ def test_two_sinks_one_failing(
 
     barrier = threading.Barrier(2, timeout=120)
 
-    def use_barrier(callback: Callable) -> Callable:
-        @functools.wraps(callback)
-        def wrapper(*args, **kwargs):
-            logger.info("Waiting for barrier.")
-            barrier.wait()
-            logger.info("Barrier reached.")
-            return callback(*args, **kwargs)
-
-        return wrapper
-
     failing_sink: PyConnectTestSink = connect_sink_factory(conf)
     failing_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 3)
-    failing_sink.on_startup = use_barrier(failing_sink.on_startup)
+    failing_sink.on_message_received = use_barrier(barrier, failing_sink, "on_message_received")
     failing_sink.with_wrapper_for("on_message_received")
 
     running_sink = connect_sink_factory(conf)
-    running_sink.on_startup = use_barrier(running_sink.on_startup)
+    running_sink.on_message_received = use_barrier(barrier, running_sink, "on_message_received")
     running_sink.with_wrapper_for("on_message_received")
     running_sink.max_idle_count = 5
 
