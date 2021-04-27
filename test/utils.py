@@ -289,7 +289,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         new_status = super().on_shutdown()
         logger.info("######## CONSUMER SHUTDOWN #########")
         self._check_status()
-        logger.debug(f"Flushing messages:\n{pformat(self.message_buffer, indent=2)}")
+        logger.debug(f"Flushed messages:\n{pformat(self.flushed_messages, indent=2)}")
         return new_status
 
     def on_no_message_received(self) -> Optional[Status]:
