@@ -115,7 +115,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         try:
             _, high_offset = self._offset_consumer.get_watermark_offsets(partition, timeout=10)
         except KafkaException:
-            logger.warning(f"Offset topic {off_topic} was not found")
+            logger.warning(f"Offset topic {off_topic} was not found, creating it now.")
             self._admin.create_topics(
                 [NewTopic(off_topic, num_partitions=1, replication_factor=1)], operation_timeout=120
             )
