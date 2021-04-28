@@ -8,6 +8,7 @@ from confluent_kafka.cimpl import KafkaError, KafkaException
 from confluent_kafka.error import ConsumeError
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.serialization import SerializationError
 from loguru import logger
 
 from pyconnect.config import configure_logging
@@ -160,6 +161,8 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
                 msg = self._consumer.poll(self.config["poll_timeout"])
             except ConsumeError as ce:
                 logger.debug(f"ConsumeError while polling: {ce.kafka_message}")
+                if isinstance(ce, SerializationError):
+                    raise ce
                 msg = ce.kafka_message
 
             self.current_message = msg
