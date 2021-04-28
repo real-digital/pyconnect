@@ -41,7 +41,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         self._offset_consumer = self._make_offset_consumer()
 
     def _make_admin(self) -> AdminClient:
-        return AdminClient({"bootstrap.servers": self.config["bootstrap.servers"]})
+        return AdminClient({"bootstrap.servers": self.config["bootstrap.servers"], **self.config["kafka_opts"]})
 
     def _make_producer(self) -> SerializingProducer:
         """
@@ -54,8 +54,8 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             "bootstrap.servers": self.config["bootstrap.servers"],
             "key.serializer": None,
             "value.serializer": None,
-            **self.config.get("kafka_opts", {}),
-            **self.config.get("kafka_producer_opts", {}),
+            **self.config["kafka_opts"],
+            **self.config["kafka_producer_opts"],
         }
 
         hidden_config = hide_sensitive_values(producer_config, hash_sensitive_values=hash_sensitive_values)
@@ -78,8 +78,8 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             "enable.partition.eof": True,
             "group.id": f'{self.config["offset_topic"]}_fetcher',
             "default.topic.config": {"auto.offset.reset": "latest"},
-            **self.config.get("kafka_opts", {}),
-            **self.config.get("kafka_consumer_opts", {}),
+            **self.config["kafka_opts"],
+            **self.config["kafka_consumer_opts"],
         }
 
         offset_consumer = DeserializingConsumer(config)
@@ -116,7 +116,9 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
             _, high_offset = self._offset_consumer.get_watermark_offsets(partition, timeout=10)
         except KafkaException:
             logger.warning(f"Offset topic {off_topic} was not found")
-            self._admin.create_topics([NewTopic(off_topic, num_partitions=1, replication_factor=1)])
+            self._admin.create_topics(
+                [NewTopic(off_topic, num_partitions=1, replication_factor=1)], operation_timeout=120
+            )
             high_offset = 0
         partition.offset = max(0, high_offset - 1)
         self._offset_consumer.assign([partition])
@@ -218,11 +220,22 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         instance.
         """
         idx = self.get_index()
-        old_serializer = self._producer._value_serializer
-        self._value_schema = None
-        self._produce(key=None, value=idx, topic=self.config["offset_topic"])
-        self._producer.flush()
-        self._producer._value_serializer = old_serializer
+        idx_schema = to_value_schema(idx)
+        avro_value_serializer = AvroSerializer(
+            schema_registry_client=self.schema_registry_client, schema_str=idx_schema
+        )
+
+        producer_config = {
+            "bootstrap.servers": self.config["bootstrap.servers"],
+            "key.serializer": None,
+            "value.serializer": avro_value_serializer,
+            **self.config["kafka_opts"],
+            **self.config["kafka_producer_opts"],
+        }
+
+        offset_producer = SerializingProducer(producer_config)
+        offset_producer.produce(key=None, value=idx, topic=self.config["offset_topic"])
+        offset_producer.flush()
 
     @abstractmethod
     def get_index(self) -> Any:

@@ -10,16 +10,13 @@ from time import sleep
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from unittest import mock
 
-import pykafka
 import pytest
 from confluent_kafka import DeserializingConsumer, SerializingProducer
-from confluent_kafka.admin import AdminClient
-from confluent_kafka.cimpl import KafkaError, Message, NewTopic
-from confluent_kafka.error import ConsumeError
+from confluent_kafka.admin import AdminClient, ClusterMetadata, TopicMetadata
+from confluent_kafka.cimpl import KafkaError, Message, NewTopic, TopicPartition
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from loguru import logger
-from pykafka import KafkaClient, Topic
 
 from pyconnect.avroparser import to_key_schema, to_value_schema
 from pyconnect.config import configure_logging
@@ -199,20 +196,36 @@ def plain_avro_producer(
     return producer
 
 
+@pytest.fixture
+def plain_avro_consumer(running_cluster_config: Dict[str, str], topic_and_partitions: Tuple[str, int]):
+    topic_id, _ = topic_and_partitions
+    schema_registry_client = SchemaRegistryClient({"url": running_cluster_config["schema-registry"]})
+    key_deserializer = AvroDeserializer(schema_registry_client)
+    value_deserializer = AvroDeserializer(schema_registry_client)
+    config = {
+        "bootstrap.servers": running_cluster_config["broker"],
+        "group.id": f"{topic_id}_consumer",
+        "key.deserializer": key_deserializer,
+        "value.deserializer": value_deserializer,
+        "enable.partition.eof": False,
+        "default.topic.config": {"auto.offset.reset": "earliest"},
+        "allow.auto.create.topics": True,
+    }
+    consumer = DeserializingConsumer(config)
+    consumer.subscribe([topic_id])
+    consumer.list_topics()
+    return consumer
+
+
 Record = Tuple[Any, Any]
 RecordList = List[Record]
-
-
-@pytest.fixture
-def pykafka_client(cluster_config: Dict[str, str]):
-    return pykafka.client.KafkaClient(hosts=cluster_config["broker"], exclude_internal_topics=False)
 
 
 @pytest.fixture
 def produced_messages(
     records: RecordList,
     plain_avro_producer,
-    pykafka_client: KafkaClient,
+    plain_avro_consumer,
     topic_and_partitions: Tuple[str, int],
     running_cluster_config: Dict[str, str],
     consume_all,
@@ -227,11 +240,16 @@ def produced_messages(
 
     plain_avro_producer.flush()
 
-    pykafka_topic: Topic = pykafka_client.cluster.topics[topic_id]
-    topic_highwater: List[int] = pykafka_topic.latest_available_offsets()
-    logger.info(f"Topic highwater: {topic_highwater}")
-    assert len(topic_highwater) == partitions, "Not all partitions present"
-    assert len(records) == sum(partition.offset[0] for partition in topic_highwater.values()), ""
+    cluster_metadata: ClusterMetadata = plain_avro_consumer.list_topics(topic=topic_id)
+    topic_metadata: TopicMetadata = cluster_metadata.topics[topic_id]
+    logger.info(f"Topic partitions: {topic_metadata.partitions.keys()}")
+    assert partitions == len(topic_metadata.partitions.keys()), "Not all partitions present"
+    offsets = 0
+    for partition in topic_metadata.partitions.keys():
+        _, ho = plain_avro_consumer.get_watermark_offsets(TopicPartition(topic_id, partition))
+        offsets += ho
+
+    assert len(records) == offsets, ""
     yield records
 
 
@@ -293,43 +311,19 @@ def records() -> RecordList:
 
 
 @pytest.fixture
-def consume_all(topic_and_partitions: Tuple[str, int], running_cluster_config: Dict[str, str]) -> Iterable[ConsumeAll]:
+def consume_all(plain_avro_consumer) -> Iterable[ConsumeAll]:
     """
     Creates a function that consumes and returns all messages for the current test's topic.
     """
-    topic_id, _ = topic_and_partitions
-
-    schema_registry_client = SchemaRegistryClient({"url": running_cluster_config["schema-registry"]})
-    key_deserializer = AvroDeserializer(schema_registry_client)
-    value_deserializer = AvroDeserializer(schema_registry_client)
-    config = {
-        "bootstrap.servers": running_cluster_config["broker"],
-        "group.id": f"{topic_id}_consumer",
-        "key.deserializer": key_deserializer,
-        "value.deserializer": value_deserializer,
-        "enable.partition.eof": False,
-        "default.topic.config": {"auto.offset.reset": "earliest"},
-        "allow.auto.create.topics": True,
-    }
-
-    consumer = DeserializingConsumer(config)
-    consumer.subscribe([topic_id])
-    consumer.list_topics()
 
     def consume_all_() -> RecordList:
         records = []
         while True:
-            try:
-                msg = consumer.poll(timeout=100)
-                if msg is None:
-                    break
-                records.append((msg.key(), msg.value()))
-            except ConsumeError as ce:
-                assert ce.code == KafkaError._PARTITION_EOF
+            msg = plain_avro_consumer.poll(timeout=100)
+            if msg is None:
                 break
+            records.append((msg.key(), msg.value()))
 
         return records
 
     yield consume_all_
-
-    consumer.close()

@@ -114,7 +114,7 @@ def test_two_sinks_one_failing(
     _, partitions = topic_and_partitions
     if partitions == 1:
         return  # we need to test multiple consumers on multiple partitions for rebalancing issues
-    conf = {"offset_commit_interval": 2}
+    conf = {"offset_commit_interval": 4}
 
     failing_sink = connect_sink_factory(conf)
     failing_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 2)
@@ -148,7 +148,7 @@ def test_two_sinks_one_failing(
 
 def use_sleep(sink: PyConnectTestSink, callback_name: str) -> Callable:
     callback = getattr(sink, callback_name)
-    sleeps_remaining = 2
+    sleeps_remaining = 4
 
     @functools.wraps(callback)
     def wrapper(*args, **kwargs):

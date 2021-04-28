@@ -80,7 +80,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
 
-        if self.config.pop("unify_logging", False):
+        if self.config["unify_logging"]:
             configure_logging()
         self.current_message: Optional[Message] = None
         self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
