@@ -30,7 +30,7 @@ class PyConnectSource(BaseConnector, metaclass=ABCMeta):
         super().__init__()
         self.config = config
         self.config["bootstrap.servers"] = ",".join(self.config["bootstrap_servers"])
-        if self.config.pop("unify_logging", False):
+        if self.config["unify_logging"]:
             configure_logging()
         self.schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
         self._key_schema: Optional[str] = None
