@@ -137,7 +137,7 @@ def test_two_sinks_one_failing(
 
     assert running_sink.on_message_received.called, "Running sink should have received messages"
     assert failing_sink.on_message_received.called, "Failing sink should have received messages"
-    assert len(failing_sink.flushed_messages) == 1, "At most the messages before crash should be flushed"
+    assert len(failing_sink.flushed_messages) <= 2, "At most the messages before crash should be flushed"
     assert failing_sink.status == Status.CRASHED
     assert isinstance(failing_sink.status_info, TestException)
     assert running_sink.status == Status.STOPPED
