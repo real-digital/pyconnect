@@ -18,7 +18,7 @@ def tmp_with_pyconnect(tmpdir: pathlib.Path) -> Tuple[pathlib.Path, pathlib.Path
     venv_name = ".test_venv"
     venv_bin = tmpdir / venv_name / "bin"
 
-    subprocess.run(["virtualenv", f"--python=python3", venv_name], cwd=tmpdir, check=True)
+    subprocess.run(["virtualenv", "--python=python3", venv_name], cwd=tmpdir, check=True)
     subprocess.run([venv_bin / "pip", "install", "-U", "pip"], cwd=tmpdir, check=True)
     subprocess.run([venv_bin / "pip", "install", ROOT_DIR], cwd=tmpdir, check=True)
     return tmpdir, venv_bin

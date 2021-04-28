@@ -4,9 +4,6 @@ This module offers functions which infer avro schemas from records.
 import json
 from typing import Any, Dict
 
-# TODO: refactor this code, especially the name 'avroparser' is misleading, should be something like 'schema_inference'
-from confluent_kafka import avro as confluent_avro
-
 RecordDict = Dict[str, Any]
 
 SIMPLE_TYPE_MAP = {int: "long", float: "double", str: "string", bytes: "bytes", bytearray: "bytes", type(None): "null"}
@@ -94,7 +91,7 @@ def to_key_schema(record: Any):
     :param record: The key record to infer the schema from.
     :return: Key schema.
     """
-    return confluent_avro.loads(json.dumps(create_schema_from_record("key", record)))
+    return json.dumps(create_schema_from_record("key", record))
 
 
 def to_value_schema(record: Any):
@@ -105,4 +102,4 @@ def to_value_schema(record: Any):
     :param record: The value record to infer the schema from.
     :return: Value schema.
     """
-    return confluent_avro.loads(json.dumps(create_schema_from_record("value", record)))
+    return json.dumps(create_schema_from_record("value", record))

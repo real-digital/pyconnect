@@ -3,7 +3,6 @@ This module contains utility functions and classes for testing.
 """
 import difflib
 import functools
-import logging
 import pathlib
 import random
 import string
@@ -13,16 +12,17 @@ from unittest import mock
 
 import pytest
 from confluent_kafka.cimpl import Message
-from pyconnect.config import SourceConfig
+from loguru import logger
+
+from pyconnect.config import SourceConfig, configure_logging
 from pyconnect.core import Status
 from pyconnect.pyconnectsink import PyConnectSink
 from pyconnect.pyconnectsource import PyConnectSource
 
 TEST_DIR: pathlib.Path = pathlib.Path(__file__).parent.absolute()
 ROOT_DIR: pathlib.Path = TEST_DIR.parent
-CLI_DIR: pathlib.Path = TEST_DIR / "kafka" / "bin"
 
-logger = logging.getLogger("test.utils")
+configure_logging()
 
 
 class TestException(Exception):
@@ -243,7 +243,7 @@ class PyConnectTestSource(ConnectTestMixin, PyConnectSource):
 
 class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
     """
-    Implementation of a PyConnectSink that buffers incoming messges into a list
+    Implementation of a PyConnectSink that buffers incoming messages into a list
     :attr:`test.utils.PyConnectTestSink.message_buffer` and appends them into another
     one :attr:`test.utils.PyConnectTestSink.flushed_messages` on flush.
     Flush happens after every :attr:`test.utils.PyConnectTestSink.flush_interval` messages (defaults to 5).
@@ -269,19 +269,19 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         Utility function that prints consumer group status to stdout
         """
         group_status = self._consumer.consumer_group_metadata()
-        logger.info(f"Kafka consumer group status:\n{group_status}\n--- END group status ---")
+        logger.info(f"Kafka consumer group status: \n{group_status}\n--- END group status ---")
 
     def on_startup(self) -> None:
-        super().on_startup()
         logger.info("######## CONSUMER STARTUP #########")
-        logger.info(f"Config: {self.config!r}")
+        super().on_startup()
+        logger.info(f"Config:\n{pformat(self.config, indent=2)}")
         self._check_status()
 
     def need_flush(self) -> bool:
         return len(self.message_buffer) == self.flush_interval
 
     def on_flush(self) -> None:
-        logger.debug("Flushing messages:\n" + pformat(self.message_buffer, indent=2))
+        logger.debug(f"Flushing messages:\n{pformat(self.message_buffer, indent=2)}")
         self.flushed_messages.extend(self.message_buffer)
         self.message_buffer.clear()
 
@@ -289,7 +289,7 @@ class PyConnectTestSink(ConnectTestMixin, PyConnectSink):
         new_status = super().on_shutdown()
         logger.info("######## CONSUMER SHUTDOWN #########")
         self._check_status()
-        logger.info("Flushed messages:\n" + pformat(self.flushed_messages, indent=2))
+        logger.debug(f"Flushed messages:\n{pformat(self.flushed_messages, indent=2)}")
         return new_status
 
     def on_no_message_received(self) -> Optional[Status]:

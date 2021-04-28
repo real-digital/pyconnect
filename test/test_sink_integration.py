@@ -1,4 +1,6 @@
+import functools
 import threading
+import time
 from typing import Callable, Dict, List, Tuple
 from unittest import mock
 
@@ -20,7 +22,7 @@ def connect_sink_factory(
     Creates a factory, that can be used to create readily usable instances of :class:`test.utils.PyConnectTestSink`.
     If necessary, any config parameter can be overwritten by providing a custom config as argument to the factory.
     """
-    topic_id, partitions = topic_and_partitions
+    topic_id, _ = topic_and_partitions
     group_id = topic_id + "_sink_group_id"
     sink_config = SinkConfig(
         {
@@ -28,8 +30,14 @@ def connect_sink_factory(
             "schema_registry": running_cluster_config["schema-registry"],
             "offset_commit_interval": 1,
             "group_id": group_id,
-            "poll_timeout": 2,
+            "poll_timeout": 10.0,
             "topics": topic_id,
+            "kafka_opts": {
+                "allow.auto.create.topics": True,
+                "auto.offset.reset": "earliest",
+                "default.topic.config": {"auto.offset.reset": "earliest"},
+            },
+            "unify_logging": True,
         }
     )
 
@@ -77,7 +85,7 @@ def test_offset_commit_on_restart(produced_messages: List[Tuple[str, dict]], con
     connect_sink.run()
 
     assert len(expected_call[1]["offsets"]) > 0, f"No offsets commited during commit! {expected_call}"
-    assert expected_call == commit_mock.call_args
+    compare_lists_unordered(expected_call[1]["offsets"], commit_mock.call_args[1]["offsets"])
 
 
 @pytest.mark.integration
@@ -106,13 +114,15 @@ def test_two_sinks_one_failing(
     _, partitions = topic_and_partitions
     if partitions == 1:
         return  # we need to test multiple consumers on multiple partitions for rebalancing issues
-    conf = {"offset_commit_interval": 2}
+    conf = {"offset_commit_interval": 4}
 
     failing_sink = connect_sink_factory(conf)
-    failing_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 3)
+    failing_sink.with_method_raising_after_n_calls("on_message_received", TestException(), 2)
+    failing_sink.on_message_received = use_sleep(failing_sink, "on_message_received")
     failing_sink.with_wrapper_for("on_message_received")
 
     running_sink = connect_sink_factory(conf)
+    running_sink.on_message_received = use_sleep(running_sink, "on_message_received")
     running_sink.with_wrapper_for("on_message_received")
     running_sink.max_idle_count = 5
 
@@ -127,10 +137,25 @@ def test_two_sinks_one_failing(
 
     assert running_sink.on_message_received.called, "Running sink should have received messages"
     assert failing_sink.on_message_received.called, "Failing sink should have received messages"
-    assert len(failing_sink.flushed_messages) == 2, "Only messages before crash should be flushed"
+    assert len(failing_sink.flushed_messages) <= 2, "At most the messages before crash should be flushed"
     assert failing_sink.status == Status.CRASHED
     assert isinstance(failing_sink.status_info, TestException)
     assert running_sink.status == Status.STOPPED
 
     flushed_messages = running_sink.flushed_messages + failing_sink.flushed_messages
     compare_lists_unordered(produced_messages, flushed_messages)
+
+
+def use_sleep(sink: PyConnectTestSink, callback_name: str) -> Callable:
+    callback = getattr(sink, callback_name)
+    sleeps_remaining = 4
+
+    @functools.wraps(callback)
+    def wrapper(*args, **kwargs):
+        nonlocal sleeps_remaining
+        if sleeps_remaining > 0:
+            time.sleep(3)
+            sleeps_remaining -= 1
+        return callback(*args, **kwargs)
+
+    return wrapper

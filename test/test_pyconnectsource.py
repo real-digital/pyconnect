@@ -2,6 +2,7 @@ from typing import Callable, cast
 from unittest import mock
 
 import pytest
+
 from pyconnect.config import SourceConfig
 from pyconnect.core import NoCrashInfo
 
@@ -26,7 +27,11 @@ def source_factory(message_factory):
         )
     )
 
-    with mock.patch("pyconnect.pyconnectsource.AvroProducer"), mock.patch("pyconnect.pyconnectsource.AvroConsumer"):
+    with mock.patch("pyconnect.pyconnectsource.SerializingProducer"), mock.patch(
+        "pyconnect.pyconnectsource.DeserializingConsumer"
+    ), mock.patch("pyconnect.pyconnectsource.SchemaRegistryClient"), mock.patch(
+        "pyconnect.pyconnectsource.AdminClient"
+    ):
 
         def source_factory_():
             source = PyConnectTestSource(config).with_committed_offset(0)

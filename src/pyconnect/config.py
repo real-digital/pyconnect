@@ -167,7 +167,7 @@ def _checkstr_to_checker(sanity_check: str) -> SanityChecker:
     """
 
     def checker(all_fields: BaseConfig) -> None:
-        logger.debug(f"Validting fields using {sanity_check!r}")
+        logger.debug(f"Validating fields using {sanity_check!r}")
         checker_expression = sanity_check.format(
             **{
                 key: repr(value.total_seconds()) if isinstance(value, dt.timedelta) else repr(value)
@@ -181,9 +181,7 @@ def _checkstr_to_checker(sanity_check: str) -> SanityChecker:
 
         success = eval(checker_expression)
         if not success:
-            raise SanityError(
-                f"Sanity check {sanity_check!r} failed! " f"Formatted expression: {checker_expression!r}"
-            )
+            raise SanityError(f"Sanity check {sanity_check!r} failed! \n Formatted expression: {checker_expression!r}")
         logger.debug("Check successful")
 
     return checker
@@ -307,26 +305,22 @@ def configure_logging(use_stderr=False) -> None:
     :param use_stderr: Use stderr instead of stdout. Useful when cli commands are used in a pipe and need to provide
                        output in a certain format
     """
+    requested_level = os.getenv("LOGURU_LEVEL", "DEBUG")
+
+    requested_colorize = os.getenv("LOGURU_COLORIZE", "f")
+    colorize = requested_colorize.lower() not in ("0", "f", "n", "false", "no")
+
+    requested_serialize = os.getenv("LOGURU_SERIALIZE", "yes")
+    serialize = requested_serialize.lower() not in ("0", "f", "n", "false", "no")
     handlers: List[Dict] = [
         {
             "sink": sys.stderr if use_stderr else sys.stdout,
-            "format": "{time} | {level} | {thread.name}:{name}:{function}:{line} | {message}",
-            "serialize": True,
+            "format": "{level:<8} | {time:DD_MM HH:mm:ss} | {thread.name:<5}:{name}:{function}:{line} | '{message}'",
+            "level": requested_level,
+            "serialize": serialize,
+            "colorize": colorize,
         }
     ]
-
-    requested_level = os.getenv("LOGURU_LEVEL")
-    if requested_level:
-        handlers[0]["level"] = requested_level
-    else:
-        handlers[0]["level"] = "DEBUG"
-
-    requested_colorize = os.getenv("LOGURU_COLORIZE")
-    if requested_colorize:
-        colorize = requested_colorize.lower() not in ("0", "f", "n", "false", "no")
-        handlers[0]["colorize"] = colorize
-    else:
-        handlers[0]["colorize"] = False
 
     logger.configure(handlers=handlers)
 
@@ -596,8 +590,12 @@ class SourceConfig(BaseConfig):
             The kafka topic where this pyconnect source will safe its source offsets to.
     """
 
+    __parsers = {"kafka_consumer_opts": json.loads, "kafka_producer_opts": json.loads}
+
     def __init__(self, conf_dict: Dict[str, Any]) -> None:
         self["topic"] = conf_dict.pop("topic")
         self["offset_topic"] = conf_dict.pop("offset_topic")
+        self["kafka_consumer_opts"] = conf_dict.pop("kafka_consumer_opts", {})
+        self["kafka_producer_opts"] = conf_dict.pop("kafka_producer_opts", {})
 
         super().__init__(conf_dict)

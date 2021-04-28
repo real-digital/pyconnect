@@ -1,11 +1,11 @@
 """
 This module contains central dependencies for all other modules such as base exceptions or base classes
 """
-from abc import ABCMeta, abstractmethod
 import hashlib
-from enum import Enum
 import os
-from typing import Any, Callable, Optional, Dict
+from abc import ABCMeta, abstractmethod
+from enum import Enum
+from typing import Any, Callable, Dict, Optional
 
 from confluent_kafka import KafkaException
 from confluent_kafka.cimpl import Message
@@ -145,7 +145,7 @@ class BaseConnector(metaclass=ABCMeta):
         """
         if not self._status == Status.NOT_YET_RUNNING:
             raise PyConnectException(
-                "Can not re-start a failed/stopped connector, " "need to re-create a Connect instance"
+                "Can not re-start a failed/stopped connector, need to re-create a Connect instance"
             )
 
         self._status = Status.RUNNING

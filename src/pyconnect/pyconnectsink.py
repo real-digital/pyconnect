@@ -1,17 +1,20 @@
-import struct
-import warnings
 from abc import ABCMeta, abstractmethod
 from enum import Enum
+from pprint import pformat
 from typing import Dict, List, Optional, Tuple
 
-from confluent_kafka import Message, TopicPartition
-from confluent_kafka.avro import AvroConsumer
+from confluent_kafka import DeserializingConsumer, Message, TopicPartition
 from confluent_kafka.cimpl import KafkaError, KafkaException
+from confluent_kafka.error import ConsumeError
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.serialization import SerializationError
 from loguru import logger
 
 from pyconnect.config import configure_logging
+
 from .config import SinkConfig
-from .core import BaseConnector, Status, message_repr, hide_sensitive_values
+from .core import BaseConnector, Status, hide_sensitive_values, message_repr
 
 
 class MessageType(Enum):
@@ -66,67 +69,6 @@ def msg_to_topic_partition(msg: Message) -> TopicPartition:
     return TopicPartition(msg.topic(), msg.partition(), msg.offset())
 
 
-class RichAvroConsumer(AvroConsumer):
-    """
-    Kafka Consumer client which does avro schema decoding of messages.
-    Handles message deserialization.
-
-    Constructor takes below parameters
-
-    :param dict config: Config parameters containing url for schema registry (``schema.registry.url``)
-                        and the standard Kafka client configuration (``bootstrap.servers`` et.al).
-    """
-
-    def __init__(self, config, schema_registry=None):
-
-        super().__init__(config, schema_registry=schema_registry)
-        self._current_key_schema_id = None
-        self._current_value_schema_id = None
-
-    @staticmethod
-    def extract_schema_id(message: bytes) -> int:
-        _, schema_id = struct.unpack(">bI", message[:5])
-        return schema_id
-
-    @property
-    def current_key_schema_id(self) -> int:
-        return self._current_key_schema_id
-
-    @property
-    def current_value_schema_id(self) -> int:
-        return self._current_value_schema_id
-
-    def poll(self, timeout=None):
-        """
-        This is an overriden method from confluent_kafka.Consumer class. This handles message
-        deserialization using avro schema
-
-        :param float timeout: Poll timeout in seconds (default: indefinite)
-        :returns: message object with deserialized key and value as dict objects
-        :rtype: Message
-        """
-        if timeout is None:
-            timeout = -1
-
-        # Call grandparent's poll method to skip AvroConsumer's message conversion
-        message = super(AvroConsumer, self).poll(timeout)
-        if message is None:
-            return None
-        if not message.value() and not message.key():
-            return message
-        if not message.error():
-            if message.value() is not None:
-                self._current_value_schema_id = self.extract_schema_id(message.value())
-                decoded_value = self._serializer.decode_message(message.value())
-                message.set_value(decoded_value)
-            if message.key() is not None:
-                self._current_key_schema_id = self.extract_schema_id(message.key())
-                decoded_key = self._serializer.decode_message(message.key())
-                message.set_key(decoded_key)
-
-        return message
-
-
 class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     """
     This class offers base functionality for all sink connectors. All sink connectors have to inherit from this class
@@ -144,27 +86,28 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
         self.current_message: Optional[Message] = None
         self.__offsets: Dict[Tuple[str, int], TopicPartition] = {}
         self.__eof_reached: Dict[Tuple[str, int], bool] = {}
-        self._consumer: RichAvroConsumer = self._make_consumer()
+        self._consumer: DeserializingConsumer = self._make_consumer()
 
-    def _make_consumer(self) -> RichAvroConsumer:
-        hash_sensitive_values = self.config["hash_sensitive_values"]
+    def _make_consumer(self) -> DeserializingConsumer:
+        schema_registry_client = SchemaRegistryClient({"url": self.config["schema_registry"]})
+        key_deserializer = AvroDeserializer(schema_registry_client)
+        value_deserializer = AvroDeserializer(schema_registry_client)
+
         config = {
             "bootstrap.servers": ",".join(self.config["bootstrap_servers"]),
-            "group.id": self.config["group_id"],
-            "schema.registry.url": self.config["schema_registry"],
-            # We need to commit offsets manually once we're sure it got saved
-            # to the sink
+            "key.deserializer": key_deserializer,
+            "value.deserializer": value_deserializer,
             "enable.auto.commit": False,
-            # We want to keep track of EOFs
             "enable.partition.eof": True,
-            # We need this to start at the last committed offset instead of the
-            # latest when subscribing for the first time
+            "group.id": self.config["group_id"],
             "default.topic.config": {"auto.offset.reset": "earliest"},
             **self.config["kafka_opts"],
         }
-        consumer = RichAvroConsumer(config)
+
+        hash_sensitive_values = self.config["hash_sensitive_values"]
+        consumer = DeserializingConsumer(config)
         hidden_config = hide_sensitive_values(config, hash_sensitive_values=hash_sensitive_values)
-        logger.info(f"AvroConsumer created with config: {hidden_config}")
+        logger.info(f"AvroConsumer created with config: {pformat(hidden_config, indent=2)}")
         # noinspection PyArgumentList
         consumer.subscribe(self.config["topics"], on_assign=self._on_assign, on_revoke=self._on_revoke)
         return consumer
@@ -210,19 +153,18 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
     def has_partition_assignments(self):
         return len(self._consumer.assignment()) > 0
 
-    @property
-    def last_message(self):
-        # TODO: when bumping to next major release, remove this property
-        warnings.warn(
-            "'last_message' will be permanently renamed to 'current_message' in next major release", DeprecationWarning
-        )
-        return self.current_message
-
     def _run_once(self) -> None:
         try:
             self.current_message = None
             self._status_info = None
-            msg = self._consumer.poll(self.config["poll_timeout"])
+            try:
+                msg = self._consumer.poll(self.config["poll_timeout"])
+            except ConsumeError as ce:
+                logger.debug(f"ConsumeError while polling: {ce.kafka_message}")
+                if isinstance(ce, SerializationError):
+                    raise ce
+                msg = ce.kafka_message
+
             self.current_message = msg
             self._flush_if_needed()
             self._call_right_handler_for_message(msg)
@@ -387,7 +329,7 @@ class PyConnectSink(BaseConnector, metaclass=ABCMeta):
                     break
                 except KafkaException as ke:
                     logger.warning(
-                        f"Kafka exception occurred while comitting offsets (attempt {attempt_count}): {str(ke)}"
+                        f"Kafka exception occurred while committing offsets (attempt {attempt_count}): {str(ke)}"
                     )
                     if attempt_count == max_attempts:
                         raise
