@@ -23,11 +23,3 @@ consume-%: boot-cluster
 
 list-topics: boot-cluster
 	kafkacat -b broker:9092 -L
-
-publish-test:
-	rm -rf dist
-	python setup.py sdist bdist_wheel
-	twine upload dist/* --repository-url https://test.pypi.org/legacy/
-
-publish: publish-test
-	poetry publish

@@ -1,0 +1,79 @@
+name: Verify release
+on:
+  push:
+    branches:
+      - release-prep
+
+jobs:
+  check-version-change:
+    name: Check version change
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v2
+      - name: Setup python and install packages
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.6'
+          architecture: x64
+      - name: Check version change
+        run: |
+          git fetch origin master:master
+          MASTER_VERSION="$(git show master:pyproject.toml | sed -n -E "s/^version = \"(.+)\"/\1/p")"
+          echo "Version on master: ${MASTER_VERSION}"
+          NEW_VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
+          echo "Version on release-prep: ${NEW_VERSION}"
+          (if [[ "${MASTER_VERSION}" == "${NEW_VERSION}" ]]; then
+            echo 'Need to bump version, please run `poetry version <major|minor|patch|whatever..>`'
+            exit 1
+          fi)
+  publish-to-devpi:
+    name: Publish to devpi
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v2
+      - name: Setup python and install packages
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.6'
+          architecture: x64
+      - name: Prepare environment for test publish
+        if: success()
+        run: |
+          pip install "poetry>=1.0.2" devpi-server devpi "pluggy<1,>=0.12.0"
+          devpi-server --serverdir=/tmp/devpi --init
+          devpi-server --serverdir=/tmp/devpi --start
+          scripts/wait-for-it.sh localhost:3141 -t 60
+          devpi use http://localhost:3141
+          devpi login root --password=
+          devpi index -c root/stable bases=root/pypi volatile=True
+          devpi user -m root password="root"
+          mkdir -p ${HOME}/.esque
+          poetry config repositories.devpi http://localhost:3141/root/stable/
+          poetry config repositories.testpypi https://test.pypi.org/legacy/
+          poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_API_TOKEN }}
+      - name: Publish to devpi
+        if: success()
+        run: |
+          poetry build
+          poetry publish --repository devpi --username root --password root
+      - name: Test devpi release
+        if: success()
+        run: |
+          VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          pushd /tmp
+          pip install setuptools
+          pip install -i http://localhost:3141/root/stable/ --timeout 60 pyconnect
+          CURRENT_VERSION=$(python -c 'import pkg_resources;print(pkg_resources.get_distribution("pyconnect").version)')
+          [[ ${CURRENT_VERSION} == ${VERSION} ]]
+          popd
+      - name: Publish to testpypi
+        if: success()
+        run: |
+          VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          git fetch origin master:master
+          BUILD=$(git rev-list --count HEAD...master)
+          sed -i -E "s/^version = .*/version = \"${VERSION}.dev${BUILD}\"/" pyproject.toml
+          poetry build
+          poetry publish --repository testpypi
