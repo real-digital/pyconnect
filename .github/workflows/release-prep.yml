@@ -61,6 +61,7 @@ jobs:
       - name: Test devpi release
         if: success()
         run: |
+          ! which pyconnect
           VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           pushd /tmp
           pip install setuptools
@@ -72,7 +73,8 @@ jobs:
         if: success()
         run: |
           VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
-          BUILD=$(git rev-list --count HEAD...origin/master)
+          git fetch origin master:master
+          BUILD=$(git rev-list --count HEAD...master)
           sed -i -E "s/^version = .*/version = \"${VERSION}.dev${BUILD}\"/" pyproject.toml
           poetry build
           poetry publish --repository testpypi
