@@ -61,7 +61,6 @@ jobs:
       - name: Test devpi release
         if: success()
         run: |
-          ! which pyconnect
           VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           pushd /tmp
           pip install setuptools
