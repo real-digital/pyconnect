@@ -18,9 +18,10 @@ jobs:
           architecture: x64
       - name: Check version change
         run: |
-          MASTER_VERSION="$(git show origin/master:pyproject.toml | sed -n -E "s/^version = \"(.+)\"/\1/p")"
-          NEW_VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
+          git fetch origin master:master
+          MASTER_VERSION="$(git show master:pyproject.toml | sed -n -E "s/^version = \"(.+)\"/\1/p")"
           echo "Version on master: ${MASTER_VERSION}"
+          NEW_VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
           echo "Version on release-prep: ${NEW_VERSION}"
           (if [[ "${MASTER_VERSION}" == "${NEW_VERSION}" ]]; then
             echo 'Need to bump version, please run `poetry version <major|minor|patch|whatever..>`'
